@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0b1f3a">
+<title>PST Baneoversikt</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b1f3a'/%3E%3Crect x='6' y='9' width='20' height='14' rx='1.5' fill='none' stroke='%2331c48d' stroke-width='2'/%3E%3Cline x1='16' y1='9' x2='16' y2='23' stroke='%2331c48d' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<style>
+:root{--navy:#0b1f3a;--navy-2:#132c4f;--navy-3:#1c3b66;--tekst:#e8eef6;--demp:#9fb0c6;--linje:rgba(255,255,255,.1);--aksent:#31c48d;--oransje:#c4561a;--kort-tekst:#142235;--kort-demp:#5b6b80;--kort-linje:#e3e8ef;--topp-h:56px;--liste-b:380px;--detalj-b:420px;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px;color-scheme:light}
+*{box-sizing:border-box}html,body{margin:0;height:100%}body{background:var(--navy);color:var(--tekst);overflow:hidden}
+a{color:#1f6fd1}button{font:inherit;cursor:pointer}input,select{font:inherit}
+.app{display:grid;height:100%;grid-template-rows:var(--topp-h) 1fr;grid-template-columns:var(--liste-b) 1fr 0;grid-template-areas:"topp topp topp" "liste kart detalj"}
+.app.uten-liste{grid-template-columns:0 1fr 0}.app.med-detaljer{grid-template-columns:var(--liste-b) 1fr var(--detalj-b)}.app.uten-liste.med-detaljer{grid-template-columns:0 1fr var(--detalj-b)}
+.app.uten-liste .sidepanel{display:none}.app:not(.med-detaljer) .detaljer{display:none}
+.topp{grid-area:topp;display:flex;align-items:center;gap:12px;padding:0 12px;border-bottom:1px solid var(--linje);z-index:5;background:var(--navy)}
+.meny{background:none;border:0;color:var(--tekst);font-size:20px;padding:4px 8px;border-radius:6px}.meny:hover{background:var(--navy-3)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:600;white-space:nowrap}.logo small{display:block;font-weight:400;color:var(--demp);font-size:11.5px}
+.logo-merke{background:var(--aksent);color:var(--navy);font-weight:800;padding:4px 7px;border-radius:6px}
+.topp-kilder{margin-left:auto;color:var(--demp)!important}
+.sok{position:relative;flex:1;max-width:460px;margin-left:12px}
+.sok input{width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--linje);background:var(--navy-2);color:var(--tekst);outline:none}.sok input:focus{border-color:var(--aksent)}
+.sok-liste{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;color:var(--kort-tekst);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.35);max-height:70vh;overflow:auto;padding:6px 0;z-index:20}
+.sok-liste button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 12px;color:inherit}.sok-liste button small{display:block;color:var(--kort-demp);margin-left:18px}
+.sok-liste button.aktiv,.sok-liste button:hover{background:#eef4fb}.sok-gruppe{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--kort-demp);padding:8px 12px 2px}.sok-info{padding:8px 12px;color:var(--kort-demp)}
+.prikk{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle}
+.sidepanel{grid-area:liste;overflow-y:auto;border-right:1px solid var(--linje);padding:12px;min-width:0}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.kpi button{background:var(--navy-2);border:1px solid var(--linje);border-radius:8px;padding:7px 6px;color:var(--tekst);text-align:left;display:flex;flex-direction:column;gap:1px}
+.kpi button:hover{border-color:rgba(255,255,255,.3)}.kpi button.pa{border-color:var(--aksent);box-shadow:inset 0 0 0 1px var(--aksent)}.kpi button.dempet{opacity:.45}
+.kpi b{font-size:18px;line-height:1.1}.kpi span{font-size:11px;color:var(--demp);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.filtre{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.filtre input[type=search],.filtre select,.listehode select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--linje);background:var(--navy-2);color:var(--tekst)}
+.rad2{display:flex;gap:8px;flex-wrap:wrap}.rad2>select,.rad2>label.glider{flex:1 1 140px}
+.sjekk{display:flex;gap:5px;align-items:center;color:var(--demp);font-size:13px}
+.lenke{background:none;border:0;padding:0;color:#7fb4ff;font-size:13px;text-align:left}.lenke:hover{text-decoration:underline}
+.listehode{display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:8px;color:var(--demp)}.listehode b{color:var(--tekst)}.listehode select{width:auto;max-width:180px;padding:5px 8px}
+.listeknapper{display:flex;gap:14px;margin:6px 0 8px;flex-wrap:wrap}
+.liste{list-style:none;margin:0;padding:0}
+.li{display:grid;grid-template-columns:40px 1fr auto;gap:10px;width:100%;align-items:center;text-align:left;background:none;border:0;border-bottom:1px solid var(--linje);color:var(--tekst);padding:9px 4px}
+.li:hover{background:var(--navy-2)}.li.valgt{background:var(--navy-3)}
+.li-prio{color:#fff;border-radius:6px;font-weight:700;text-align:center;padding:4px 0;font-size:12.5px}
+.li-tekst{min-width:0;display:flex;flex-direction:column;gap:2px}.li-navn{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li-under{color:var(--demp);font-size:12px}.li-signal{color:#ffd479;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.li-score{font-weight:700;font-size:15px}
+.flere{width:100%;margin:10px 0 30px;padding:9px;border-radius:8px;border:1px solid var(--linje);background:var(--navy-2);color:var(--tekst)}
+.tom{color:var(--demp);font-size:13px}
+.kartflate{grid-area:kart;position:relative;min-width:0}#kart{position:absolute;inset:0}
+.hint{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(11,31,58,.85);color:#fff;padding:6px 12px;border-radius:20px;font-size:12.5px;pointer-events:none;z-index:3;white-space:nowrap}
+.adrmarkor{width:18px;height:18px;border-radius:50%;background:#1f6fd1;border:3px solid #fff;box-shadow:0 0 0 6px rgba(31,111,209,.25)}
+.tips .maplibregl-popup-content{padding:7px 10px;font-size:12.5px;color:var(--kort-tekst);border-radius:8px}
+.lagpanel{position:absolute;top:12px;left:12px;z-index:4;color:var(--kort-tekst);max-width:calc(100% - 80px)}
+.lagknapp{display:flex;gap:6px;align-items:center;background:#fff;border:0;border-radius:8px;padding:8px 12px;box-shadow:0 2px 10px rgba(0,0,0,.25);font-weight:600;color:var(--kort-tekst)}
+.laginnhold{margin-top:6px;background:#fff;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);padding:10px 12px;width:275px;max-width:100%;display:flex;flex-direction:column;gap:8px}
+.lagtittel{font-size:11px;text-transform:uppercase;color:var(--kort-demp);letter-spacing:.6px}
+.segment{display:flex;border:1px solid var(--kort-linje);border-radius:8px;overflow:hidden}.segment button{flex:1;border:0;background:#fff;padding:6px 4px;font-size:12.5px;color:var(--kort-tekst)}.segment button.pa{background:var(--navy);color:#fff}
+.bryter{display:flex;gap:8px;align-items:flex-start;font-size:13px}.bryter small{display:block;color:var(--kort-demp);font-size:11.5px}
+.glider{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--kort-demp)}.sidepanel .glider{color:var(--demp)}
+.merk{margin:0;font-size:12px;color:#7a4b00;background:#fff6e0;padding:6px 8px;border-radius:6px}
+.lagstat{font-size:11.5px;color:var(--kort-demp);border-top:1px solid var(--kort-linje);padding-top:6px}
+.lagpanel .lenke,.detaljer .lenke,.modal .lenke{color:#1f6fd1}
+.tegn{position:absolute;left:12px;bottom:64px;z-index:3;background:rgba(255,255,255,.92);color:var(--kort-tekst);border-radius:8px;padding:6px 10px;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;max-width:calc(100% - 140px);box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.tegn i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.detaljer{grid-area:detalj;background:#f5f7fa;color:var(--kort-tekst);overflow-y:auto;min-width:0}
+.dhode{background:#fff;padding:16px 16px 12px;border-top:5px solid #7f8c8d;position:relative;border-bottom:1px solid var(--kort-linje)}
+.dprio{font-size:12px;font-weight:700;color:var(--kort-demp)}.detaljer h2{margin:2px 30px 2px 0;font-size:19px;line-height:1.25}.dsted{color:var(--kort-demp);font-size:13px}
+.lukk{position:absolute;right:10px;top:8px;border:0;background:none;font-size:24px;line-height:1;color:var(--kort-demp)}
+.merker{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.merke{color:#fff;font-size:11.5px;padding:2px 8px;border-radius:10px;font-weight:600}
+.merke.nff{background:#6c3483}.merke.inne{background:#2e86c1}.merke.lys{background:#e8edf3;color:var(--kort-tekst)}.merke.pipe{background:var(--oransje)}
+.score{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;align-items:center;margin-top:12px}.score-tall{font-size:30px;font-weight:800;grid-row:span 2}.score-tall small{font-size:13px;color:var(--kort-demp);font-weight:500}
+.sbar{height:10px;background:#e8edf3;border-radius:5px;overflow:hidden;display:flex}.sbar i{display:block}.sdel{font-size:12px;color:var(--kort-demp)}
+.knapper{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.knapper>*{border-radius:7px;padding:6px 10px;font-size:12.5px;text-decoration:none;border:1px solid var(--kort-linje);background:#fff;color:var(--kort-tekst)}
+.knapper .primar{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:600}
+.dkropp{padding:12px;display:flex;flex-direction:column;gap:10px}
+.boks{background:#fff;border:1px solid var(--kort-linje);border-radius:10px;padding:10px 12px}.boks h3{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--kort-demp)}
+.boks p{margin:0 0 8px;line-height:1.45}.boks.frem{border-left:4px solid var(--aksent)}.boks.meta{background:transparent;border-style:dashed}
+.forkl{font-size:12.5px;color:#39465a;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+dl{margin:0}.r{display:grid;grid-template-columns:130px 1fr;gap:8px;padding:4px 0;border-bottom:1px dashed #edf0f4;font-size:13px}.r:last-child{border-bottom:0}dt{color:var(--kort-demp)}dd{margin:0;word-break:break-word}
+.sig{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.sig li{font-size:13px;border-left:3px solid #f0a500;padding:2px 0 2px 8px}.sig li.ut{border-left-color:#c9d1dc;color:var(--kort-demp)}
+.sig small{color:var(--kort-demp)}.poeng{font-weight:700;color:#a76b00}.poeng.neg{color:#9b2c2c}
+.mini{list-style:none;margin:0 0 6px;padding:0}.mini button{display:flex;gap:6px;align-items:center;width:100%;text-align:left;border:0;background:none;padding:5px 2px;font-size:13px;color:var(--kort-tekst)}.mini button:hover{background:#f0f4f9}.mini small{margin-left:auto;color:var(--kort-demp)}
+.kildelinje{font-size:11.5px;color:var(--kort-demp);margin:-2px 2px 0}
+.modalbg{position:fixed;inset:0;background:rgba(5,14,28,.6);display:grid;place-items:center;z-index:50;padding:16px}
+.modal{background:#fff;color:var(--kort-tekst);border-radius:12px;max-width:980px;width:100%;max-height:90vh;overflow:auto;padding:20px 24px;position:relative}.modal h2{margin-top:0}
+.vilkar{border-collapse:collapse;width:100%;font-size:13px}.vilkar th,.vilkar td{text-align:left;vertical-align:top;padding:7px 8px;border-bottom:1px solid var(--kort-linje)}.vilkar th{font-size:11.5px;text-transform:uppercase;color:var(--kort-demp)}
+.laster{position:fixed;inset:0;display:grid;place-items:center;background:var(--navy);z-index:100;font-size:15px}
+@media (max-width:800px){
+ :root{--topp-h:104px}.topp{flex-wrap:wrap;padding:8px 12px;gap:8px}.sok{order:3;flex-basis:100%;max-width:none;margin:0}
+ .app,.app.uten-liste,.app.med-detaljer,.app.uten-liste.med-detaljer{grid-template-columns:1fr;grid-template-areas:"topp" "kart"}
+ .sidepanel{position:fixed;top:var(--topp-h);bottom:0;left:0;width:min(100%,420px);z-index:10;background:var(--navy)}
+ .detaljer{position:fixed;left:0;right:0;bottom:0;height:62vh;z-index:11;border-radius:14px 14px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.35)}
+ .tegn,.topp-kilder{display:none}.laginnhold{width:240px}.hint{top:auto;bottom:40px}
+}
+</style>
+</head>
+<body>
+<div class="laster" id="laster">Laster kunstgressbaner …</div>
+<div class="app" id="app">
+  <header class="topp">
+    <button class="meny" id="meny" aria-label="Vis/skjul liste">☰</button>
+    <div class="logo"><span class="logo-merke">PST</span><span>Kunstgressbaner i Norge<small id="undertittel"></small></span></div>
+    <div class="sok" id="sok"><input type="search" placeholder="Søk adresse, sted eller bane …" aria-label="Søk adresse eller bane"><div class="sok-liste" hidden></div></div>
+    <button class="lenke topp-kilder" id="kilderknapp">Kilder og vilkår</button>
+  </header>
+  <aside class="sidepanel" id="sidepanel"></aside>
+  <main class="kartflate">
+    <div id="kart"></div>
+    <div class="hint" id="hint" hidden></div>
+    <div class="lagpanel" id="lagpanel"></div>
+    <div class="tegn" id="tegn"></div>
+  </main>
+  <aside class="detaljer" id="detaljer"></aside>
+</div>
+<div id="modal"></div>
+
+<script>
+'use strict';
+// ============================================================ kilder
+const KILDER = {
+  stil: 'https://tiles.openfreemap.org/styles/liberty',
+  terreng: 'https://tiles.mapterhorn.com/tilejson.json',
+  graatone: 'https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png',
+  fkb: 'https://wms.geonorge.no/skwms1/wms.fkb?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image%2Fpng&TRANSPARENT=TRUE&STYLES=' +
+       '&LAYERS=fkb_arealdekke,fkb_vann,fkb_samferdsel,fkb_bygningsmessigeanlegg,fkb_bygning,fkb_hoydekurver,fkb_presentasjonsdata' +
+       '&CRS=EPSG%3A3857&WIDTH=512&HEIGHT=512&BBOX={bbox-epsg-3857}',
+  bygg: 'https://allemannsdata.com/norge/tiles/norway/tileset.json',
+  adresser: 'https://ws.geonorge.no/adresser/v1/sok',
+  deck: 'https://unpkg.com/deck.gl@9.4.0/dist.min.js',
+};
+const ATTR = {
+  kv: '© <a href="https://www.kartverket.no/" target="_blank" rel="noopener">Kartverket</a>',
+  fkb: '© <a href="https://www.kartverket.no/" target="_blank" rel="noopener">Kartverket</a>/Geovekst (FKB)',
+  terreng: '<a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">© Mapterhorn</a>',
+  bygg: '3D-bygg: <a href="https://allemannsdata.com/norge/data.html" target="_blank" rel="noopener">Allemannsdata</a> (© Kartverket CC BY 4.0, © OpenStreetMap ODbL)',
+  baner: 'Baner: Anleggsregisteret, NFF, Enhetsregisteret, Doffin',
+};
+const VILKAR = [
+  ['OpenFreeMap (OpenStreetMap)', 'https://openfreemap.org/', 'Vektorkart «Liberty» og enkle 3D-bygg', 'Kartdata © OpenStreetMap-bidragsytere (ODbL), © OpenMapTiles. Gratis, ingen nøkkel, kommersiell bruk tillatt. Kildehenvisning vises i kartet.'],
+  ['Mapterhorn', 'https://mapterhorn.com/attribution', '3D-terreng og skyggelegging', 'Åpne høydedata. Krever «© Mapterhorn» med lenke.'],
+  ['Kartverket – topografisk gråtone', 'https://www.kartverket.no/api-og-data/vilkar-for-bruk', 'Grunnkart «Gråtone»', 'CC BY 4.0, «© Kartverket». Data fra zoom 12 og innover er Geovekst-data: fritt å vise, ikke kopiere.'],
+  ['Kartverket – FKB (WMS)', 'https://kartkatalog.geonorge.no/metadata/felles-kartdatabase-fkb/df7e8515-d9ce-4781-823c-f73b3bb5fe48', 'Detaljkart: banekanter, bygg, veg', '«Copyright Statens kartverk». Siden viser bare kartbilder; selve FKB-dataene krever avtale for private.'],
+  ['Allemannsdata – Norges bygninger 3D', 'https://allemannsdata.com/norge/data.html', 'Detaljerte 3D-bygg (3D Tiles/GLB)', 'Bygget av Kartverkets laserdata (CC BY 4.0) og OSM-fotavtrykk (ODbL). Kildene må krediteres. Bare fliser i utsnittet lastes.'],
+  ['Geonorge – adresse-API', 'https://ws.geonorge.no/adresser/v1/', 'Adressesøk', 'Åpne adressedata fra Matrikkelen, © Kartverket. Ett oppslag per søk.'],
+  ['Banedata', 'https://www.anleggsregisteret.no/', 'Baner, score, kontakter og signaler', 'Anleggsregisteret, NFF-lista, Enhetsregisteret (NLOD), Doffin og kommunale kilder. Kontaktinfo er offentlig Enhetsregister-info for B2B – respekter reservasjoner.'],
+];
+const STATUS_REKKE = ['anbud', 'overmoden', 'moden', 'ukjent', 'prosess', 'tildelt', 'ok'];
+const STATUS_KORT = { anbud: 'Anbud åpent', overmoden: 'Overmoden', moden: 'Moden', ukjent: 'Ukjent', prosess: 'I rehab-prosess', tildelt: 'Tildelt', ok: 'OK' };
+const REGIONER = ['Østlandet', 'Sørlandet', 'Vestlandet', 'Midt-Norge', 'Nord-Norge'];
+const EIERKAT = ['Kommunal', 'Fylkeskommunal', 'Idrettslag/klubb', 'Privat (AS)', 'Skole/utdanning', 'Annet/privat', 'Ukjent – klassifiser'];
+const BYGG_MIN_ZOOM = 13, FKB_MIN_ZOOM = 14, SIDE = 150;
+
+// ============================================================ hjelpere
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const norm = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
+const id = (b) => String(b.anleggsnr ?? 'rad-' + b._i);
+const erInne = (b) => (b.plassering || '').startsWith('Innendørs');
+const erNff = (b) => String(b.nff_liste || '').toUpperCase() === 'JA';
+const dato = (iso) => { if (!iso) return '–'; const [y, m, d] = String(iso).slice(0, 10).split('-'); return d ? `${d}.${m}.${y}` : iso; };
+const kr = (n) => !n ? '–' : n >= 1e6 ? (n / 1e6).toLocaleString('nb-NO', { maximumFractionDigits: 1 }) + ' MNOK' : Math.round(n / 1000).toLocaleString('nb-NO') + ' kNOK';
+const tel = (t) => { const s = String(t || '').replace(/[^\d+]/g, ''); return s ? 'tel:' + s : ''; };
+const tall = (n) => Number(n).toLocaleString('nb-NO');
+function km(a, b) { const R = 6371, r = Math.PI / 180, dLa = (b[1] - a[1]) * r, dLo = (b[0] - a[0]) * r;
+  const s = Math.sin(dLa / 2) ** 2 + Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(s)); }
+const lagre = { les(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, skriv(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+// Telefon/e-post i fritekst blir klikkbare (uten regex-lookbehind, som eldre Safari ikke støtter)
+function lenket(t) {
+  if (!t) return '–';
+  const re = /([\w.+-]+@[\w-]+(?:\.[\w-]+)+)|((?:\+47\s?)?(?:\d{2} \d{2} \d{2} \d{2}|\d{8}|02180|\d{5})(?!\d))/g;
+  let ut = '', sist = 0, m;
+  while ((m = re.exec(t))) {
+    if (m[2] && m.index > 0 && /[\d-]/.test(t[m.index - 1])) continue;
+    ut += esc(t.slice(sist, m.index)) + (m[1] ? `<a href="mailto:${esc(m[1])}">${esc(m[1])}</a>` : `<a href="${tel(m[2])}">${esc(m[2])}</a>`);
+    sist = m.index + m[0].length;
+  }
+  return ut + esc(t.slice(sist));
+}
+
+// ============================================================ nettleser-cache for 3D-bygg
+// JSON og GLB lagres i Cache Storage (14 dager, maks 400 MB). Svar som lages av lagrede bytes får
+// tilbake den opprinnelige Response.url – loaders.gl bruker den til å kjenne igjen JSON og løse opp
+// relative under-fliser (regions/…/tileset.json).
+const BC = { navn: 'pst-bygg-v1', alder: 14 * 864e5, maks: 400 * 1048576, stat: { nett: 0, cache: 0, feil: 0 }, idx: null, bytes: 0 };
+function medUrl(body, url, init) { const r = new Response(body, init); Object.defineProperty(r, 'url', { value: url }); return r; }
+async function byggIndeks() {
+  if (BC.idx) return BC.idx;
+  BC.idx = new Map();
+  try { const c = await caches.open(BC.navn);
+    for (const q of await c.keys()) { const r = await c.match(q); const t = +r?.headers.get('x-lagret') || 0, n = +r?.headers.get('x-bytes') || 0;
+      if (!r || Date.now() - t > BC.alder) { await c.delete(q); continue; } BC.idx.set(q.url, { t, n }); BC.bytes += n; } } catch {}
+  return BC.idx;
+}
+async function cachedFetch(input, init) {
+  const url = new URL(typeof input === 'string' ? input : input.url ?? String(input), location.href).href;
+  const kan = typeof caches !== 'undefined' && isSecureContext && /\.(json|glb|b3dm)(\?|#|$)/i.test(url);
+  let c = null;
+  if (kan) try { c = await caches.open(BC.navn); const hit = await c.match(url);
+    if (hit && Date.now() - (+hit.headers.get('x-lagret') || 0) < BC.alder) { BC.stat.cache++; oppdaterLagstat(); return medUrl(await hit.arrayBuffer(), url, { status: 200, headers: hit.headers }); }
+  } catch { c = null; }
+  let res;
+  try { res = await fetch(url, init); } catch (e) { BC.stat.feil++; oppdaterLagstat(); throw e; }
+  if (!res.ok) { BC.stat.feil++; oppdaterLagstat(); return res; }
+  const body = await res.arrayBuffer(); BC.stat.nett++; oppdaterLagstat();
+  if (c) { const h = new Headers({ 'content-type': res.headers.get('content-type') || 'application/octet-stream', 'x-lagret': Date.now(), 'x-bytes': body.byteLength });
+    c.put(url, new Response(body.slice(0), { status: 200, headers: h })).then(async () => {
+      const idx = await byggIndeks(); BC.bytes += body.byteLength - (idx.get(url)?.n || 0); idx.set(url, { t: Date.now(), n: body.byteLength });
+      if (BC.bytes > BC.maks) for (const [u, p] of [...idx].sort((a, b) => a[1].t - b[1].t)) { if (BC.bytes <= BC.maks * 0.8) break; await c.delete(u); idx.delete(u); BC.bytes -= p.n; }
+    }).catch(() => {}); }
+  return medUrl(body, url, { status: res.status, statusText: res.statusText, headers: res.headers });
+}
+
+// ============================================================ tilstand
+const S = {
+  data: null, perId: new Map(), sokTekst: new Map(), sigBane: new Map(), sigKommune: new Map(),
+  filter: null, sort: 'prioritet', valgt: new URLSearchParams(location.search).get('bane'),
+  ref: null, avstand: new Map(), utsnitt: null, vis: SIDE, flereFiltre: false,
+  lag: Object.assign({ grunnkart: 'kart', fkb: false, bygg: true, terreng: true, overdrivelse: 1, skygge: false }, lagre.les('pst-lag', {})),
+  lagApen: innerWidth > 1100, zoom: 5, liste: [], tell: {}, byggStatus: 'av', kildeFeil: {},
+};
+const TOMT = { tekst: '', status: [], fylke: '', kommune: '', eierkat: '', plass: 'alle', nff: false, signaler: false, iUtsnitt: false, pipeline: '', minScore: 0, eier: '' };
+S.filter = { ...TOMT };
+if (innerWidth <= 800) $('#app').classList.add('uten-liste');
+
+// ============================================================ filtrering og sortering
+function passer(b, utenStatus) {
+  const f = S.filter;
+  if (!utenStatus && f.status.length && !f.status.includes(b.kode)) return false;
+  if (f.fylke && b.fylke !== f.fylke) return false;
+  if (f.kommune && b.kommune !== f.kommune) return false;
+  if (f.eierkat && b.eierkategori !== f.eierkat) return false;
+  if (f.eier && b.eier !== f.eier) return false;
+  if (f.plass === 'ute' && erInne(b)) return false;
+  if (f.plass === 'inne' && !erInne(b)) return false;
+  if (f.nff && !erNff(b)) return false;
+  if (f.signaler && !b.aktive_signaler) return false;
+  if (f.pipeline && (b.pipeline_status || 'Ikke kontaktet') !== f.pipeline) return false;
+  if (f.minScore && (b.lead_score ?? 0) < f.minScore) return false;
+  if (f.iUtsnitt && S.utsnitt && b.lat != null) { const [w, s, e, n] = S.utsnitt; if (b.lon < w || b.lon > e || b.lat < s || b.lat > n) return false; }
+  if (f.tekst) { const t = S.sokTekst.get(id(b)); if (!norm(f.tekst).split(/\s+/).filter(Boolean).every((o) => t.includes(o))) return false; }
+  return true;
+}
+function beregnListe() {
+  const t = Object.fromEntries(STATUS_REKKE.map((k) => [k, 0])), l = [];
+  for (const b of S.data.baner) { if (!passer(b, true)) continue; t[b.kode]++; if (!S.filter.status.length || S.filter.status.includes(b.kode)) l.push(b); }
+  const reg = (r) => { const i = REGIONER.indexOf(r); return i < 0 ? 99 : i; };
+  const cmp = {
+    prioritet: (a, b) => a.prioritet - b.prioritet,
+    alder: (a, b) => (b.dekke_alder ?? -1) - (a.dekke_alder ?? -1) || a.prioritet - b.prioritet,
+    geografi: (a, b) => reg(a.region) - reg(b.region) || (a.fylke || '').localeCompare(b.fylke || '', 'nb') || (a.kommune || '').localeCompare(b.kommune || '', 'nb') || a.prioritet - b.prioritet,
+    navn: (a, b) => a.navn.localeCompare(b.navn, 'nb'),
+    avstand: (a, b) => (S.avstand.get(id(a)) ?? 1e9) - (S.avstand.get(id(b)) ?? 1e9),
+  };
+  l.sort(cmp[S.sort === 'avstand' && !S.ref ? 'prioritet' : S.sort]);
+  S.liste = l; S.tell = t;
+}
+
+// ============================================================ sidepanel
+function tegnSidepanel() {
+  const d = S.data, f = S.filter, st = d.meta.status;
+  const fylker = [...new Set(d.baner.map((b) => b.fylke).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'nb'));
+  const kommuner = [...new Set(d.baner.filter((b) => !f.fylke || b.fylke === f.fylke).map((b) => b.kommune).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'nb'));
+  const opt = (arr, v, tom) => `<option value="">${tom}</option>` + arr.map((x) => `<option${x === v ? ' selected' : ''}>${esc(x)}</option>`).join('');
+  const totalt = STATUS_REKKE.reduce((s, k) => s + S.tell[k], 0);
+  const aktive = Object.keys(TOMT).some((k) => JSON.stringify(f[k]) !== JSON.stringify(TOMT[k]));
+  $('#sidepanel').innerHTML = `
+    <div class="kpi">${STATUS_REKKE.map((k) => `<button data-status="${k}" class="${f.status.includes(k) ? 'pa' : f.status.length ? 'dempet' : ''}" title="${esc(st[k].tekst)}"><b style="color:${st[k].farge}">${tall(S.tell[k])}</b><span>${STATUS_KORT[k]}</span></button>`).join('')}</div>
+    <div class="filtre">
+      <input type="search" data-f="tekst" placeholder="Filtrer: navn, kommune, eier, klubb …" value="${esc(f.tekst)}">
+      <div class="rad2"><select data-f="fylke" aria-label="Fylke">${opt(fylker, f.fylke, 'Alle fylker')}</select><select data-f="kommune" aria-label="Kommune">${opt(kommuner, f.kommune, 'Alle kommuner')}</select></div>
+      <div class="rad2">
+        <label class="sjekk"><input type="checkbox" data-f="nff" ${f.nff ? 'checked' : ''}> NFF-lista</label>
+        <label class="sjekk"><input type="checkbox" data-f="signaler" ${f.signaler ? 'checked' : ''}> Med signaler</label>
+        <label class="sjekk"><input type="checkbox" data-f="iUtsnitt" ${f.iUtsnitt ? 'checked' : ''}> I kartutsnitt</label>
+      </div>
+      <button class="lenke" data-a="flere">${S.flereFiltre ? 'Færre filtre ▴' : 'Flere filtre ▾'}</button>
+      ${S.flereFiltre ? `
+      <div class="rad2"><select data-f="eierkat" aria-label="Eiertype">${opt(EIERKAT, f.eierkat, 'Alle eiertyper')}</select>
+        <select data-f="plass" aria-label="Ute/inne"><option value="alle">Ute og inne</option><option value="ute"${f.plass === 'ute' ? ' selected' : ''}>Bare utendørs</option><option value="inne"${f.plass === 'inne' ? ' selected' : ''}>Bare innendørs</option></select></div>
+      <div class="rad2"><select data-f="pipeline" aria-label="Pipeline">${opt(d.meta.pipeline, f.pipeline, 'Alle pipelinestatuser')}</select>
+        <label class="glider">Min. score <span id="minscore">${f.minScore}</span><input type="range" min="0" max="90" step="5" value="${f.minScore}" data-f="minScore"></label></div>` : ''}
+      ${f.eier ? `<div class="tom">Eier: <b style="color:var(--tekst)">${esc(f.eier)}</b> <button class="lenke" data-a="fjerneier">fjern</button></div>` : ''}
+    </div>
+    <div class="listehode"><div><b>${tall(S.liste.length)}</b> av ${tall(totalt)} baner ${aktive ? '<button class="lenke" data-a="nullstill">· nullstill</button>' : ''}</div>
+      <select id="sort" aria-label="Sortering">${[['prioritet', 'Prioritet'], ['alder', 'Eldst dekke'], ['geografi', 'Geografi'], ['navn', 'Navn']].concat(S.ref ? [['avstand', 'Nærmest ' + S.ref.tekst]] : []).map(([v, t]) => `<option value="${v}"${S.sort === v ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+    <div class="listeknapper"><button class="lenke" data-a="passinn">Vis utvalget i kartet</button><button class="lenke" data-a="csv">Last ned CSV</button>${S.ref ? '<button class="lenke" data-a="fjernref">Fjern søkepunkt</button>' : ''}</div>
+    <ol class="liste" id="liste"></ol>`;
+  tegnListe();
+}
+function tegnListe() {
+  const st = S.data.meta.status;
+  $('#liste').innerHTML = S.liste.slice(0, S.vis).map((b) => { const k = S.avstand.get(id(b));
+    return `<li><button class="li${S.valgt === id(b) ? ' valgt' : ''}" data-bane="${esc(id(b))}"><span class="li-prio" style="background:${st[b.kode].farge}">${b.prioritet}</span>
+      <span class="li-tekst"><span class="li-navn">${esc(b.navn)}</span><span class="li-under">${esc(b.kommune)}${b.dekke_aar ? ' · dekke ' + b.dekke_aar : ' · dekkeår ukjent'}${b.banestorrelse ? ' · ' + esc(b.banestorrelse) : ''}${erInne(b) ? ' · inne' : ''}${k != null ? ` · ${k < 10 ? k.toFixed(1) : Math.round(k)} km` : ''}</span>
+      ${b.aktive_signaler ? `<span class="li-signal">⚡ ${esc(b.aktive_signaler)}</span>` : ''}</span><span class="li-score">${b.lead_score ?? ''}</span></button></li>`; }).join('')
+    + (S.liste.length > S.vis ? `<li><button class="flere" data-a="vismer">Vis flere (${tall(S.liste.length - S.vis)} igjen)</button></li>` : '')
+    + (S.liste.length ? '' : '<li class="tom">Ingen baner passer filtrene.</li>');
+}
+function oppdaterAlt(beholdSide) {
+  if (!beholdSide) S.vis = SIDE;
+  beregnListe();
+  const fokus = document.activeElement?.dataset?.f, pos = document.activeElement?.selectionStart;
+  tegnSidepanel();
+  if (fokus === 'tekst') { const i = $('[data-f=tekst]'); i.focus(); try { i.setSelectionRange(pos, pos); } catch {} }
+  oppdaterKartdata();
+}
+$('#sidepanel').addEventListener('input', (e) => {
+  const f = e.target.dataset.f; if (!f) return;
+  const v = e.target.type === 'checkbox' ? e.target.checked : f === 'minScore' ? +e.target.value : e.target.value;
+  S.filter[f] = v; if (f === 'fylke') S.filter.kommune = '';
+  oppdaterAlt();
+});
+$('#sidepanel').addEventListener('change', (e) => { if (e.target.id === 'sort') { S.sort = e.target.value; oppdaterAlt(); } });
+$('#sidepanel').addEventListener('click', (e) => {
+  const k = e.target.closest('[data-status],[data-a],[data-bane]'); if (!k) return;
+  if (k.dataset.status) { const s = k.dataset.status, l = S.filter.status; S.filter.status = l.includes(s) ? l.filter((x) => x !== s) : [...l, s]; return oppdaterAlt(); }
+  if (k.dataset.bane) return velg(k.dataset.bane, true);
+  ({
+    flere: () => { S.flereFiltre = !S.flereFiltre; tegnSidepanel(); },
+    fjerneier: () => { S.filter.eier = ''; oppdaterAlt(); },
+    nullstill: () => { S.filter = { ...TOMT }; oppdaterAlt(); },
+    passinn: () => passInn(S.liste),
+    csv: lastNedCsv,
+    fjernref: () => { S.ref = null; S.avstand.clear(); settMarkor(null); if (S.sort === 'avstand') S.sort = 'prioritet'; oppdaterAlt(); },
+    vismer: () => { S.vis += SIDE * 2; tegnListe(); },
+  })[k.dataset.a]?.();
+});
+
+// ============================================================ detaljpanel
+const rad = (k, v) => v === undefined || v === null || v === '' ? '' : `<div class="r"><dt>${k}</dt><dd>${v}</dd></div>`;
+const mail = (e) => e ? `<a href="mailto:${esc(e)}">${esc(e)}</a>` : '';
+const tlf = (t) => t ? `<a href="${tel(t)}">${esc(t)}</a>` : '';
+const org = (o) => o ? `<a href="https://virksomhet.brreg.no/oppslag/enheter/${esc(o)}" target="_blank" rel="noopener">${esc(o)}</a>` : '';
+const nett = (u) => u ? `<a href="${esc(/^https?:/.test(u) ? u : 'https://' + u)}" target="_blank" rel="noopener">${esc(u.replace(/^https?:\/\//, ''))}</a>` : '';
+function besteEpost(b) { return b.kontaktperson_epost || b.klubb_epost || b.eier_epost || ''; }
+function epostUtkast(b) {
+  const alder = b.dekke_alder != null ? ` Ifølge Anleggsregisteret er dekket fra ${b.dekke_aar} (ca. ${b.dekke_alder} år).` : '';
+  const tekst = `Hei,\n\nJeg kontakter dere fra PST Sportsanlegg, som rehabiliterer kunstgressbaner over hele landet.${alder} En vanlig levetid er 10–12 år, så det kan være aktuelt å se på tilstand og planer for banen.\n\nVi tilbyr gjerne en uforpliktende befaring og tilstandsvurdering, og kan hjelpe med grunnlag til spillemiddelsøknad og budsjett.\n\nEr dette noe dere vil se nærmere på? Hvem er riktig kontaktperson for anlegget?\n\nMed vennlig hilsen\n`;
+  return `mailto:${encodeURIComponent(besteEpost(b))}?subject=${encodeURIComponent('Kunstgressbanen ' + b.navn + ' – tilstand og rehabilitering')}&body=${encodeURIComponent(tekst)}`;
+}
+function tegnDetaljer() {
+  const b = S.valgt && S.perId.get(S.valgt);
+  $('#app').classList.toggle('med-detaljer', !!b);
+  if (!b) { $('#detaljer').innerHTML = ''; return; }
+  const d = S.data, st = d.meta.status[b.kode], typer = Object.fromEntries(d.meta.signaltyper.map((t) => [t.kode, t]));
+  const grunn = Math.max(0, b.grunnscore ?? 0), sig = b.signal_poeng ?? 0;
+  const signaler = [...(S.sigBane.get(String(b.anleggsnr)) || []), ...(S.sigKommune.get(b.kommune) || [])]
+    .sort((x, y) => (y.aktiv === 'JA') - (x.aktiv === 'JA') || String(y.kilde_dato).localeCompare(String(x.kilde_dato)));
+  const akt = d.aktiviteter.filter((a) => String(a.anleggsnr) === String(b.anleggsnr));
+  const samme = b.eier ? d.baner.filter((x) => x.eier === b.eier && x !== b).sort((x, y) => x.prioritet - y.prioritet) : [];
+  const gmaps = b.lat != null ? `https://www.google.com/maps/search/?api=1&query=${b.lat},${b.lon}` : '';
+  $('#detaljer').innerHTML = `
+  <header class="dhode" style="border-top-color:${st.farge}">
+    <button class="lukk" data-a="lukk" aria-label="Lukk">×</button>
+    <div class="dprio">#${b.prioritet}</div><h2>${esc(b.navn)}</h2>
+    <div class="dsted">${esc(b.kommune)} · ${esc(b.fylke)} · ${esc(b.region)}</div>
+    <div class="merker"><span class="merke" style="background:${st.farge}">${esc(st.tekst)}</span>${erNff(b) ? '<span class="merke nff">NFF-lista</span>' : ''}${erInne(b) ? '<span class="merke inne">Innendørs</span>' : ''}${b.banestorrelse ? `<span class="merke lys">${esc(b.banestorrelse)}</span>` : ''}${b.pipeline_status && b.pipeline_status !== 'Ikke kontaktet' ? `<span class="merke pipe">${esc(b.pipeline_status)}</span>` : ''}</div>
+    <div class="score"><div class="score-tall">${b.lead_score ?? 0}<small>/100</small></div>
+      <div class="sbar" title="Grunnscore ${grunn} + signaler ${sig}"><i style="width:${Math.min(64, grunn)}%;background:var(--navy-3)"></i>${sig > 0 ? `<i style="width:${Math.min(100 - grunn, sig)}%;background:#f0a500"></i>` : ''}</div>
+      <div class="sdel">grunnscore ${b.grunnscore ?? 0}/64 · signaler ${sig >= 0 ? '+' : ''}${sig}</div></div>
+    <div class="knapper"><button class="primar" data-a="fly">Fly til i 3D</button>${besteEpost(b) ? `<a href="${epostUtkast(b)}">E-postutkast</a>` : ''}<button data-a="kopier">Kopier</button><button data-a="del">Del lenke</button>${gmaps ? `<a href="${gmaps}" target="_blank" rel="noopener">Google Maps</a>` : ''}<a href="https://doffin.no/search?searchString=${encodeURIComponent('kunstgress ' + (b.kommune || ''))}" target="_blank" rel="noopener">Doffin</a></div>
+  </header>
+  <div class="dkropp">
+    <section class="boks frem"><h3>Neste steg</h3><p>${esc(b.neste_steg || '–')}</p><h3>Beste kontakt</h3><p>${lenket(b.beste_kontakt)}</p></section>
+    <section class="boks"><h3>Hvorfor denne scoren</h3><p class="forkl">${esc(b.score_forklaring || '–')}</p></section>
+    ${signaler.length ? `<section class="boks"><h3>Signaler (${signaler.filter((s) => s.aktiv === 'JA').length} aktive)</h3><ul class="sig">${signaler.map((s) => `<li class="${s.aktiv === 'JA' ? '' : 'ut'}">
+      <span class="poeng${+s.poeng < 0 ? ' neg' : ''}">${+s.poeng > 0 ? '+' : ''}${esc(s.poeng ?? '')}</span> <b>${esc(typer[s.signaltype]?.navn || s.signaltype)}</b>
+      <small>${dato(s.kilde_dato)}${s.gyldig_til ? ' → ' + dato(s.gyldig_til) : ''}${s.aktiv === 'JA' ? '' : ' · utløpt'}${s.anleggsnr ? '' : ' · gjelder kommunen'}</small>
+      <div>${esc(s.beskrivelse)}</div>${s.kilde_url ? `<a href="${esc(s.kilde_url)}" target="_blank" rel="noopener">Kilde ↗</a>` : ''}</li>`).join('')}</ul></section>` : ''}
+    <section class="boks"><h3>Tilstand</h3><dl>
+      ${rad('Dekke lagt', b.dekke_aar ? `${b.dekke_aar}${b.dekke_alder != null ? ` (${b.dekke_alder} år)` : ''}` : 'Ukjent')}${rad('Verifisert år', b.dekke_aar_verifisert)}
+      ${rad('Byggeår (register)', b.byggeaar)}${rad('Sist ombygd (register)', b.sist_ombygd)}${rad('Ifyll', esc(b.ifyll))}${rad('Størrelse', esc(b.banestorrelse))}
+      ${rad('Plassering', esc(b.plassering))}${rad('NFF-lista', erNff(b) ? 'Ja – levetid utløper innen 0–2 år' : 'Nei')}${rad('Datakvalitet', esc(b.datakvalitet))}${rad('Datakilde', esc(b.datakilde))}</dl></section>
+    <section class="boks"><h3>Eier</h3><dl>
+      ${rad('Navn', esc(b.eier))}${rad('Kategori', esc(b.eierkategori))}${rad('Org.nr.', org(b.eier_orgnr))}${rad('E-post', mail(b.eier_epost))}${rad('Telefon', tlf(b.eier_telefon))}
+      ${rad('Nettside', nett(b.eier_nettside))}${rad('Leder', esc(b.eier_leder))}${rad('Flater totalt', b.eier_antall_flater ? `${b.eier_antall_flater} (${b.eier_overmodne ?? 0} overmodne)` : '')}${rad('Spillemidler utbetalt', kr(b.spillemidler_utbetalt))}</dl></section>
+    ${b.klubb_navn || b.klubb_epost || b.klubb_telefon ? `<section class="boks"><h3>Klubb / drifter</h3><dl>${rad('Navn', esc(b.klubb_navn))}${rad('Org.nr.', org(b.klubb_orgnr))}${rad('E-post', mail(b.klubb_epost))}${rad('Telefon', tlf(b.klubb_telefon))}${rad('Leder', esc(b.klubb_leder))}</dl></section>` : ''}
+    ${b.kontaktperson || b.kontaktperson_epost ? `<section class="boks"><h3>Kontaktperson</h3><dl>${rad('Navn', esc(b.kontaktperson))}${rad('Rolle', esc(b.kontaktperson_rolle))}${rad('E-post', mail(b.kontaktperson_epost))}${rad('Telefon', tlf(b.kontaktperson_telefon))}</dl></section>` : ''}
+    <p class="kildelinje">Kontaktkilde: ${esc(b.kontakt_kilde || '–')}${b.kontakt_sjekket ? ', sjekket ' + dato(b.kontakt_sjekket) : ''}. Bruk for B2B og respekter reservasjoner.</p>
+    <section class="boks"><h3>Salg</h3><dl>${rad('Pipeline', esc(b.pipeline_status))}${rad('Ansvarlig', esc(b.ansvarlig_selger))}${rad('Siste kontakt', b.siste_kontakt ? dato(b.siste_kontakt) : '')}${rad('Neste oppfølging', b.neste_oppfolging ? dato(b.neste_oppfolging) : '')}${rad('Notat', esc(b.notat))}</dl>
+      ${akt.length ? `<ul class="sig">${akt.map((a) => `<li><b>${dato(a.dato)}</b> ${esc(a.type)} · ${esc(a.selger)} ${a.kontakt ? '→ ' + esc(a.kontakt) : ''}<div>${esc(a.resultat)}</div>${a.neste_steg ? `<small>Neste: ${esc(a.neste_steg)} ${a.neste_dato ? '(' + dato(a.neste_dato) + ')' : ''}</small>` : ''}</li>`).join('')}</ul>` : '<p class="tom" style="color:var(--kort-demp)">Ingen aktiviteter registrert. Logg samtaler i arket «Aktiviteter» i Excel.</p>'}</section>
+    ${samme.length ? `<section class="boks"><h3>Samme eier – ${samme.length} andre flater</h3><ul class="mini">${samme.slice(0, 12).map((x) => `<li><button data-bane="${esc(id(x))}"><span class="prikk" style="background:${d.meta.status[x.kode].farge}"></span> #${x.prioritet} ${esc(x.navn)}<small>${x.dekke_alder != null ? x.dekke_alder + ' år' : ''}</small></button></li>`).join('')}</ul>
+      <button class="lenke" data-a="eierfilter">Vis alle ${samme.length + 1} flater for denne eieren i lista →</button></section>` : ''}
+    <section class="boks meta"><dl>${rad('Anleggsnr.', esc(b.anleggsnr))}${rad('Koordinater', b.lat != null ? `${b.lat}, ${b.lon}` : '')}${rad('Status', esc(b.status))}${rad('Sist oppdatert', dato(b.sist_oppdatert) + (b.oppdatert_av ? ' av ' + esc(b.oppdatert_av) : ''))}</dl></section>
+  </div>`;
+  $('#detaljer').scrollTop = 0;
+}
+$('#detaljer').addEventListener('click', (e) => {
+  const k = e.target.closest('[data-a],[data-bane]'); if (!k) return;
+  if (k.dataset.bane) return velg(k.dataset.bane, true);
+  const b = S.perId.get(S.valgt);
+  ({
+    lukk: () => velg(null),
+    fly: () => flyTilBane(b),
+    kopier: () => navigator.clipboard?.writeText([`${b.navn} (${b.kommune}, ${b.fylke})`, `Prioritet #${b.prioritet} · score ${b.lead_score} · ${b.rehab_status}`,
+      `Dekke: ${b.dekke_aar ?? 'ukjent'}${b.dekke_alder != null ? ` (${b.dekke_alder} år)` : ''} · ${b.banestorrelse ?? ''} · ${b.plassering ?? ''}`,
+      `Eier: ${b.eier ?? ''} (${b.eierkategori ?? ''})`, `Neste steg: ${b.neste_steg ?? ''}`, `Kontakt: ${b.beste_kontakt ?? ''}`, location.href].join('\n')).then(() => { k.textContent = 'Kopiert ✓'; }),
+    del: () => navigator.clipboard?.writeText(location.href).then(() => { k.textContent = 'Lenke kopiert ✓'; }),
+    eierfilter: () => { S.filter = { ...TOMT, eier: b.eier }; $('#app').classList.remove('uten-liste'); oppdaterAlt(); },
+  })[k.dataset.a]?.();
+});
+function velg(bid, fly) {
+  S.valgt = bid;
+  const u = new URL(location.href); bid ? u.searchParams.set('bane', bid) : u.searchParams.delete('bane'); history.replaceState(null, '', u);
+  tegnDetaljer(); if (S.data) tegnListe();
+  if (kart?.getLayer('pst-ring')) kart.setFilter('pst-ring', ['==', ['get', 'id'], bid || '']);
+  const b = bid && S.perId.get(bid);
+  if (b && fly) flyTilBane(b);
+  if (b && innerWidth <= 800) $('#app').classList.add('uten-liste');
+}
+
+// ============================================================ adressesøk
+(function adressesok() {
+  const boks = $('#sok'), inp = $('input', boks), liste = $('.sok-liste', boks);
+  let valg = [], aktiv = 0, tid, ctrl, adr = [], info = '';
+  const tegn = () => {
+    const q = inp.value.trim();
+    if (q.length < 2) { liste.hidden = true; return; }
+    const t = norm(q);
+    const baner = S.data ? S.data.baner.filter((b) => S.sokTekst.get(id(b)).includes(t)).slice(0, 5) : [];
+    valg = [...baner.map((b) => ({ b })), ...adr.map((a) => ({ a }))];
+    liste.innerHTML = (baner.length ? '<div class="sok-gruppe">Baner</div>' : '') + valg.map((v, i) => v.b
+      ? `<button data-i="${i}" class="${i === aktiv ? 'aktiv' : ''}"><span class="prikk" style="background:${S.data.meta.status[v.b.kode].farge}"></span> <b>#${v.b.prioritet}</b> ${esc(v.b.navn)}<small>${esc(v.b.kommune)}</small></button>`
+      : `${i === baner.length ? '<div class="sok-gruppe">Adresser (Kartverket)</div>' : ''}<button data-i="${i}" class="${i === aktiv ? 'aktiv' : ''}">📍 ${esc(v.a.tekst)}<small>${esc(v.a.under)}</small></button>`).join('')
+      + (info ? `<div class="sok-info">${info}</div>` : !valg.length && q.length >= 3 ? '<div class="sok-info">Ingen treff</div>' : '');
+    liste.hidden = false;
+  };
+  const velgI = (i) => { const v = valg[i]; if (!v) return; liste.hidden = true;
+    if (v.b) return velg(id(v.b), true);
+    inp.value = v.a.tekst; S.ref = v.a; S.sort = 'avstand'; S.avstand.clear();
+    for (const b of S.data.baner) if (b.lat != null) S.avstand.set(id(b), km([v.a.lon, v.a.lat], [b.lon, b.lat]));
+    settMarkor(v.a); kart.flyTo({ center: [v.a.lon, v.a.lat], zoom: 14, duration: 1800 });
+    $('#app').classList.remove('uten-liste'); oppdaterAlt(); };
+  inp.addEventListener('input', () => {
+    aktiv = 0; adr = []; info = ''; tegn(); clearTimeout(tid); ctrl?.abort();
+    const q = inp.value.trim(); if (q.length < 3) return;
+    tid = setTimeout(async () => {
+      ctrl = new AbortController(); info = 'Søker …'; tegn();
+      try { const r = await fetch(`${KILDER.adresser}?sok=${encodeURIComponent(q)}&fuzzy=true&treffPerSide=6&utkoordsys=4258`, { signal: ctrl.signal });
+        const j = await r.json(); info = '';
+        adr = (j.adresser || []).filter((a) => a.representasjonspunkt).map((a) => ({ tekst: a.adressetekst, lat: a.representasjonspunkt.lat, lon: a.representasjonspunkt.lon,
+          under: [a.postnummer, a.poststed].filter(Boolean).join(' ') + (a.kommunenavn ? ' · ' + a.kommunenavn : '') }));
+      } catch (e) { if (e.name === 'AbortError') return; info = 'Adressesøket svarte ikke'; }
+      tegn();
+    }, 280);
+  });
+  inp.addEventListener('focus', tegn);
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') { aktiv = Math.min(aktiv + 1, valg.length - 1); tegn(); e.preventDefault(); }
+    if (e.key === 'ArrowUp') { aktiv = Math.max(aktiv - 1, 0); tegn(); e.preventDefault(); }
+    if (e.key === 'Enter') velgI(aktiv);
+    if (e.key === 'Escape') liste.hidden = true;
+  });
+  liste.addEventListener('click', (e) => { const k = e.target.closest('[data-i]'); if (k) velgI(+k.dataset.i); });
+  document.addEventListener('mousedown', (e) => { if (!boks.contains(e.target)) liste.hidden = true; });
+})();
+
+// ============================================================ kart
+let kart = null, overlay = null, markor = null, libertyLag = [];
+function geojson() {
+  return { type: 'FeatureCollection', features: S.liste.filter((b) => b.lat != null).map((b) => ({
+    type: 'Feature', geometry: { type: 'Point', coordinates: [b.lon, b.lat] },
+    properties: { id: id(b), navn: b.navn, p: b.prioritet, s: b.lead_score ?? 0, k: b.kode, inne: erInne(b) ? 1 : 0 } })) };
+}
+function oppdaterKartdata() { kart?.getSource('pst-baner')?.setData(geojson()); }
+function flyTilBane(b) { if (b?.lat == null) return; kart.flyTo({ center: [b.lon, b.lat], zoom: 16.4, pitch: 62, bearing: -18, duration: 2200, essential: true }); }
+function passInn(liste) {
+  const p = liste.filter((b) => b.lat != null); if (!p.length) return;
+  if (p.length === 1) return kart.flyTo({ center: [p[0].lon, p[0].lat], zoom: 14 });
+  const bb = new maplibregl.LngLatBounds(); p.forEach((b) => bb.extend([b.lon, b.lat]));
+  kart.fitBounds(bb, { padding: 60, maxZoom: 14, pitch: 0, bearing: 0, duration: 1200 });
+}
+function settMarkor(a) {
+  markor?.remove(); markor = null; if (!a) return;
+  const el = document.createElement('div'); el.className = 'adrmarkor'; el.title = a.tekst;
+  markor = new maplibregl.Marker({ element: el }).setLngLat([a.lon, a.lat]).addTo(kart);
+}
+function startKart() {
+  const harKartHash = location.hash.includes('kart='); // MapLibre skriver #kart= straks kartet lages
+  kart = new maplibregl.Map({ container: 'kart', style: KILDER.stil, center: [11.5, 64.2], zoom: 4.3, maxPitch: 85, hash: 'kart', attributionControl: false });
+  kart.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: [ATTR.bygg, ATTR.baner] }), 'bottom-right');
+  kart.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+  kart.addControl(new maplibregl.GeolocateControl({ trackUserLocation: false }), 'top-right');
+  kart.addControl(new maplibregl.FullscreenControl(), 'top-right');
+  kart.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
+  kart.on('error', (e) => { const s = e.sourceId; if (s) { S.kildeFeil[s] = (S.kildeFeil[s] || 0) + 1; if (S.kildeFeil[s] === 6) tegnLagpanel(); } });
+  kart.on('load', () => {
+    const lag = kart.getStyle().layers; libertyLag = lag.map((l) => l.id);
+    const forsteSymbol = lag.find((l) => l.type === 'symbol')?.id;
+    kart.addSource('pst-terreng', { type: 'raster-dem', url: KILDER.terreng, encoding: 'terrarium', tileSize: 512, attribution: ATTR.terreng });
+    kart.addSource('pst-skygge', { type: 'raster-dem', url: KILDER.terreng, encoding: 'terrarium', tileSize: 512 });
+    kart.addSource('pst-graatone', { type: 'raster', tiles: [KILDER.graatone], tileSize: 256, maxzoom: 18, attribution: ATTR.kv });
+    kart.addSource('pst-fkb', { type: 'raster', tiles: [KILDER.fkb], tileSize: 512, minzoom: FKB_MIN_ZOOM, maxzoom: 20, attribution: ATTR.fkb });
+    kart.addSource('pst-baner', { type: 'geojson', data: geojson() });
+    kart.addLayer({ id: 'pst-graatone', type: 'raster', source: 'pst-graatone', layout: { visibility: 'none' } }, forsteSymbol);
+    kart.addLayer({ id: 'pst-skygge', type: 'hillshade', source: 'pst-skygge', layout: { visibility: 'none' }, paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#2b3a4a' } }, forsteSymbol);
+    kart.addLayer({ id: 'pst-fkb', type: 'raster', source: 'pst-fkb', minzoom: FKB_MIN_ZOOM, layout: { visibility: 'none' }, paint: { 'raster-opacity': 0.85 } }, forsteSymbol);
+    const farge = ['match', ['get', 'k']]; for (const [k, v] of Object.entries(S.data.meta.status)) farge.push(k, v.farge); farge.push('#7f8c8d');
+    kart.addLayer({ id: 'pst-ring', type: 'circle', source: 'pst-baner', filter: ['==', ['get', 'id'], S.valgt || ''],
+      paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 10, 10, 15, 16, 26], 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': '#ffd400', 'circle-stroke-width': 3 } });
+    kart.addLayer({ id: 'pst-bane', type: 'circle', source: 'pst-baner', layout: { 'circle-sort-key': ['get', 's'] }, paint: {
+      'circle-color': farge, 'circle-opacity': 0.95,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, ['interpolate', ['linear'], ['get', 's'], 0, 2, 100, 5.5], 9, ['interpolate', ['linear'], ['get', 's'], 0, 4, 100, 8], 15, ['interpolate', ['linear'], ['get', 's'], 0, 9, 100, 15]],
+      'circle-stroke-color': ['case', ['==', ['get', 'inne'], 1], '#9ad1ff', '#ffffff'], 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 4, 0.6, 12, 2] } });
+    kart.addLayer({ id: 'pst-nr', type: 'symbol', source: 'pst-baner', minzoom: 11, layout: { 'text-field': ['to-string', ['get', 'p']], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 9, 16, 12], 'text-allow-overlap': true, 'symbol-sort-key': ['get', 'p'] }, paint: { 'text-color': '#fff' } });
+    kart.addLayer({ id: 'pst-navn', type: 'symbol', source: 'pst-baner', minzoom: 12, layout: { 'text-field': ['get', 'navn'], 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'text-offset': [0, 1.5], 'text-anchor': 'top', 'text-max-width': 12, 'symbol-sort-key': ['get', 'p'] }, paint: { 'text-color': '#0b1f3a', 'text-halo-color': '#fff', 'text-halo-width': 1.6 } });
+    const tips = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12, className: 'tips' });
+    kart.on('mousemove', 'pst-bane', (e) => { kart.getCanvas().style.cursor = 'pointer'; const f = e.features[0], p = f.properties, st = S.data.meta.status[p.k];
+      tips.setLngLat(f.geometry.coordinates).setHTML(`<b>#${p.p} ${esc(p.navn)}</b><br><span style="color:${st.farge}">●</span> ${esc(st.tekst)} · score ${p.s}`).addTo(kart); });
+    kart.on('mouseleave', 'pst-bane', () => { kart.getCanvas().style.cursor = ''; tips.remove(); });
+    kart.on('click', (e) => { const f = kart.queryRenderedFeatures(e.point, { layers: ['pst-bane'] })[0]; velg(f ? f.properties.id : null); });
+    kart.on('moveend', ved_flytt); ved_flytt();
+    brukLag();
+    const b = S.valgt && S.perId.get(S.valgt);
+    if (b && !harKartHash) setTimeout(() => flyTilBane(b), 500);
+  });
+}
+function ved_flytt() {
+  const z = kart.getZoom(), endretTerskel = (z >= BYGG_MIN_ZOOM) !== (S.zoom >= BYGG_MIN_ZOOM);
+  S.zoom = z; const bb = kart.getBounds(); S.utsnitt = [bb.getWest(), bb.getSouth(), bb.getEast(), bb.getNorth()];
+  if (S.filter.iUtsnitt) oppdaterAlt();
+  if (endretTerskel) oppdaterBygg();
+  const h = $('#hint');
+  const tekst = S.lag.bygg && z < BYGG_MIN_ZOOM ? 'Zoom inn for å se 3D-bygg' : S.lag.fkb && z < FKB_MIN_ZOOM ? 'Zoom litt mer inn for detaljkart (FKB)' : '';
+  h.hidden = !tekst; h.textContent = tekst;
+}
+
+// ---- lagvalg
+function brukLag() {
+  if (!kart?.getLayer('pst-bane')) return;
+  const L = S.lag, gra = L.grunnkart === 'graatone';
+  const allemann = L.bygg && S.byggStatus !== 'feil';
+  for (const lid of libertyLag) {
+    if (!kart.getLayer(lid)) continue;
+    let synlig = !gra;
+    if (lid === 'building-3d') synlig = !gra && !allemann; // OSM-klosser når Allemannsdata er av eller ikke svarer
+    kart.setLayoutProperty(lid, 'visibility', synlig ? 'visible' : 'none');
+  }
+  kart.setLayoutProperty('pst-graatone', 'visibility', gra ? 'visible' : 'none');
+  kart.setLayoutProperty('pst-fkb', 'visibility', L.fkb ? 'visible' : 'none');
+  kart.setLayoutProperty('pst-skygge', 'visibility', L.skygge ? 'visible' : 'none');
+  kart.setTerrain(L.terreng ? { source: 'pst-terreng', exaggeration: L.overdrivelse } : null);
+  try { kart.setSky({ 'sky-color': '#9cc3e6', 'horizon-color': '#e6eef5', 'fog-color': '#ffffff', 'sky-horizon-blend': 0.5, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.85, 'atmosphere-blend': 0.4 }); } catch {}
+  oppdaterBygg(); lagre.skriv('pst-lag', L); ved_flytt();
+}
+
+// ---- 3D-bygg fra Allemannsdata: deck.gl lastes først når laget brukes
+let deckLaster = null;
+function lastDeck() {
+  return deckLaster ||= new Promise((ok, feil) => { const s = document.createElement('script'); s.src = KILDER.deck; s.onload = ok; s.onerror = feil; document.head.appendChild(s); });
+}
+const BYGG_LOAD_OPTIONS = { tileset: { updateTransforms: false, maxRequests: 8, maximumScreenSpaceError: 1.5, maximumMemoryUsage: 128 }, core: { fetch: cachedFetch } };
+async function oppdaterBygg() {
+  if (!kart) return;
+  const vil = S.lag.bygg && S.byggStatus !== 'feil';
+  if (!vil) { overlay?.setProps({ layers: [] }); return; }
+  if (S.byggStatus === 'av') {
+    S.byggStatus = 'laster'; tegnLagpanel();
+    try {
+      await lastDeck();
+      const r = await cachedFetch(KILDER.bygg); if (!r.ok) throw new Error('HTTP ' + r.status); // sjekk at kilden svarer (CORS)
+      overlay = new deck.MapLibreOverlay({ interleaved: false, layers: [] });
+      kart.addControl(overlay);
+      S.byggStatus = 'klar';
+    } catch (e) { console.warn('[3D-bygg]', e); S.byggStatus = 'feil'; tegnLagpanel(); brukLag(); return; }
+    tegnLagpanel();
+  }
+  if (S.byggStatus !== 'klar') return;
+  // Ett stabilt lag: samme id/data/loadOptions hele tiden, bare `visible` endres med zoom.
+  overlay.setProps({ layers: [new deck.Tile3DLayer({
+    id: 'allemannsdata-bygg', data: KILDER.bygg, loadOptions: BYGG_LOAD_OPTIONS, pickable: false,
+    visible: S.zoom >= BYGG_MIN_ZOOM, onTileError: (_t, m) => console.warn('[3D-bygg]', m),
+  })] });
+}
+
+function tegnLagpanel() {
+  const L = S.lag, fe = S.kildeFeil;
+  const byggTekst = { av: '', laster: 'Laster 3D-motor …', klar: '', feil: 'Allemannsdata svarte ikke fra denne siden – viser enklere OSM-bygg i stedet.' }[S.byggStatus];
+  $('#lagpanel').innerHTML = `<button class="lagknapp" data-a="apne" aria-expanded="${S.lagApen}">◆ Kartlag</button>${S.lagApen ? `
+  <div class="laginnhold">
+    <div class="lagtittel">Grunnkart</div>
+    <div class="segment"><button data-g="kart" class="${L.grunnkart === 'kart' ? 'pa' : ''}">Kart (OSM)</button><button data-g="graatone" class="${L.grunnkart === 'graatone' ? 'pa' : ''}">Gråtone (Kartverket)</button></div>
+    ${fe['pst-graatone'] >= 6 && L.grunnkart === 'graatone' ? '<p class="merk">Kartverket-flisene lastes ikke i denne nettleseren nå.</p>' : ''}
+    <div class="lagtittel">Lag</div>
+    <label class="bryter"><input type="checkbox" data-l="bygg" ${L.bygg ? 'checked' : ''}><span>Detaljerte 3D-bygg <small>Allemannsdata · fra zoom 13</small></span></label>
+    ${byggTekst ? `<p class="merk">${byggTekst}</p>` : ''}
+    <label class="bryter"><input type="checkbox" data-l="fkb" ${L.fkb ? 'checked' : ''}><span>Detaljkart FKB <small>banekanter, bygg, veg · fra zoom 14</small></span></label>
+    ${fe['pst-fkb'] >= 6 && L.fkb ? '<p class="merk">FKB-kartet svarer ikke fra denne siden.</p>' : ''}
+    <label class="bryter"><input type="checkbox" data-l="terreng" ${L.terreng ? 'checked' : ''}><span>3D-terreng <small>Mapterhorn</small></span></label>
+    ${L.terreng ? `<label class="glider">Overdrivelse ${L.overdrivelse.toFixed(1)}×<input type="range" min="1" max="3" step="0.1" value="${L.overdrivelse}" data-l="overdrivelse"></label>` : ''}
+    <label class="bryter"><input type="checkbox" data-l="skygge" ${L.skygge ? 'checked' : ''}><span>Skyggelegging</span></label>
+    ${L.bygg && !L.terreng ? '<p class="merk">Tips: slå på 3D-terreng – byggene har ekte høyde over havet.</p>' : ''}
+    <div class="lagstat" id="lagstat"></div>
+    <button class="lenke" data-a="kilder">Kilder og vilkår</button>
+  </div>` : ''}`;
+  oppdaterLagstat();
+}
+function oppdaterLagstat() {
+  const el = $('#lagstat'); if (!el) return;
+  const mb = BC.bytes < 1048576 ? Math.round(BC.bytes / 1024) + ' kB' : Math.round(BC.bytes / 1048576) + ' MB';
+  el.innerHTML = `3D-bygg: ${BC.stat.nett} hentet · ${BC.stat.cache} fra cache${BC.stat.feil ? ' · ' + BC.stat.feil + ' feil' : ''}<br>Lokal cache: ${mb} av 400 MB <button class="lenke" data-a="tom">Tøm</button>`;
+}
+$('#lagpanel').addEventListener('click', (e) => {
+  const k = e.target.closest('[data-a],[data-g]'); if (!k) return;
+  if (k.dataset.g) { S.lag.grunnkart = k.dataset.g; tegnLagpanel(); return brukLag(); }
+  ({ apne: () => { S.lagApen = !S.lagApen; tegnLagpanel(); }, kilder: visKilder,
+     tom: async () => { try { await caches.delete(BC.navn); } catch {} BC.idx = new Map(); BC.bytes = 0; oppdaterLagstat(); } })[k.dataset.a]?.();
+});
+$('#lagpanel').addEventListener('input', (e) => {
+  const l = e.target.dataset.l; if (!l) return;
+  S.lag[l] = e.target.type === 'checkbox' ? e.target.checked : +e.target.value;
+  if (l === 'bygg' && e.target.checked && S.byggStatus === 'feil') S.byggStatus = 'av'; // prøv igjen
+  if (l !== 'overdrivelse') tegnLagpanel(); else e.target.previousSibling.textContent = `Overdrivelse ${S.lag.overdrivelse.toFixed(1)}×`;
+  brukLag();
+});
+
+// ============================================================ kilder, CSV, oppstart
+function visKilder() {
+  $('#modal').innerHTML = `<div class="modalbg" data-a="lukk"><div class="modal" role="dialog" aria-label="Kilder og vilkår">
+    <button class="lukk" data-a="lukk" aria-label="Lukk">×</button><h2>Kilder og vilkår</h2>
+    <p>Banedata beregnet ${dato(S.data.meta.oppdatert)} fra Excel-arbeidsdokumentet. Kartet henter bare det som vises på skjermen; 3D-bygg lagres i nettleserens cache i inntil 14 dager.</p>
+    <table class="vilkar"><thead><tr><th>Kilde</th><th>Brukes til</th><th>Lisens og merknad</th></tr></thead><tbody>
+    ${VILKAR.map(([n, u, b, l]) => `<tr><td><a href="${u}" target="_blank" rel="noopener">${esc(n)}</a></td><td>${esc(b)}</td><td>${esc(l)}</td></tr>`).join('')}</tbody></table>
+    <h3>Fargene</h3><p>Rød = overmoden (dekke ≥ 12 år) · oransje = moden (9–11 år) · grå = ukjent dekkeår · blå = i rehab-prosess · mørk grå = tildelt · grønn = OK · mørk rød = åpent anbud. Hvit ring = ute, lyseblå ring = inne. Større prikk = høyere score.</p>
+  </div></div>`;
+}
+$('#modal').addEventListener('click', (e) => { if (e.target.dataset.a === 'lukk') $('#modal').innerHTML = ''; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#modal').innerHTML = ''; });
+$('#kilderknapp').onclick = visKilder;
+$('#meny').onclick = () => $('#app').classList.toggle('uten-liste');
+
+const CSV_FELT = ['prioritet', 'lead_score', 'rehab_status', 'navn', 'kommune', 'fylke', 'region', 'plassering', 'banestorrelse', 'dekke_aar', 'dekke_alder', 'nff_liste', 'eier', 'eierkategori', 'eier_orgnr', 'eier_epost', 'eier_telefon', 'klubb_navn', 'klubb_epost', 'klubb_telefon', 'kontaktperson', 'kontaktperson_epost', 'kontaktperson_telefon', 'beste_kontakt', 'neste_steg', 'aktive_signaler', 'pipeline_status', 'ansvarlig_selger', 'anleggsnr', 'lat', 'lon'];
+function lastNedCsv() {
+  const e = (v) => { const s = v == null ? '' : String(v); return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const blob = new Blob(['﻿' + [CSV_FELT.join(';'), ...S.liste.map((b) => CSV_FELT.map((f) => e(b[f])).join(';'))].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `pst-baner-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+fetch('data/pst.json', { cache: 'no-cache' }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((d) => {
+  d.baner.forEach((b, i) => { b._i = i; b.kode ||= 'ukjent'; });
+  S.data = d;
+  for (const b of d.baner) { S.perId.set(id(b), b); S.sokTekst.set(id(b), norm(`${b.navn} ${b.kommune ?? ''} ${b.eier ?? ''} ${b.klubb_navn ?? ''} ${b.anleggsnr ?? ''}`)); }
+  for (const s of d.signaler) {
+    if (s.anleggsnr) { const k = String(s.anleggsnr); S.sigBane.set(k, [...(S.sigBane.get(k) || []), s]); }
+    else if (s.kommune) S.sigKommune.set(s.kommune, [...(S.sigKommune.get(s.kommune) || []), s]);
+  }
+  $('#undertittel').textContent = `${tall(d.meta.antall)} flater · data ${dato(d.meta.oppdatert)}`;
+  $('#tegn').innerHTML = STATUS_REKKE.map((k) => `<span><i style="background:${d.meta.status[k].farge}"></i>${esc(d.meta.status[k].tekst.replace(/ \(.*\)/, ''))}</span>`).join('');
+  beregnListe(); tegnSidepanel(); tegnDetaljer(); tegnLagpanel(); startKart();
+  $('#laster').remove();
+  if (typeof caches !== 'undefined' && isSecureContext) setTimeout(() => byggIndeks().then(oppdaterLagstat), 3000);
+}).catch((e) => { $('#laster').innerHTML = `Kunne ikke laste banedata (data/pst.json): ${esc(e.message)}`; });
+</script>
+</body>
+</html>
