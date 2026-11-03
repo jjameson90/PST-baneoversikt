@@ -44,7 +44,15 @@ a{color:#1f6fd1}button{font:inherit;cursor:pointer}input,select{font:inherit}
 .li:hover{background:var(--navy-2)}.li.valgt{background:var(--navy-3)}
 .li-prio{color:#fff;border-radius:6px;font-weight:700;text-align:center;padding:4px 0;font-size:12.5px}
 .li-tekst{min-width:0;display:flex;flex-direction:column;gap:2px}.li-navn{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.li-under{color:var(--demp);font-size:12px}.li-signal{color:#ffd479;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.li-score{font-weight:700;font-size:15px}
+.li-under{color:var(--demp);font-size:12px}.li-signal{color:#ffd479;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.li-nff{display:inline-block;background:#8e44ad;color:#fff;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:6px;vertical-align:1px;letter-spacing:.3px}
+.li.nff .li-prio{box-shadow:0 0 0 2px #c39bd3}
+.faner{display:flex;gap:4px;margin-top:14px;border-bottom:1px solid var(--linje)}.faner button{flex:1;background:none;border:0;border-bottom:2px solid transparent;color:var(--demp);padding:7px 4px;font-weight:600}
+.faner button.pa{color:var(--tekst);border-bottom-color:var(--aksent)}
+.gr{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--linje);color:var(--tekst);padding:9px 4px}.gr:hover{background:var(--navy-2)}
+.gr-navn{font-weight:600;display:flex;justify-content:space-between;gap:8px}.gr-navn span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr-tall{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--demp);margin-top:3px}.gr-tall b{color:var(--tekst)}
+.gr-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;margin-top:5px;background:var(--navy-2)}.gr-bar i{display:block}
+.li-score{font-weight:700;font-size:15px}
 .flere{width:100%;margin:10px 0 30px;padding:9px;border-radius:8px;border:1px solid var(--linje);background:var(--navy-2);color:var(--tekst)}
 .tom{color:var(--demp);font-size:13px}
 .kartflate{grid-area:kart;position:relative;min-width:0}#kart{position:absolute;inset:0}
@@ -117,6 +125,12 @@ dl{margin:0}.r{display:grid;grid-template-columns:130px 1fr;gap:8px;padding:4px 
 
 <script>
 'use strict';
+// ============================================================ innstillinger
+// Detaljerte 3D-bygg fra Allemannsdata kan ikke hentes direkte fra en annen nettside (nettleseren blokkerer
+// det). Legg inn adressen til proxyen i worker/allemannsdata-proxy.js her (f.eks.
+// 'https://pst-bygg.<navn>.workers.dev/'), så brukes de detaljerte byggene. Tom = enkle OSM-bygg.
+const BYGG_PROXY = '';
+
 // ============================================================ kilder
 const KILDER = {
   stil: 'https://tiles.openfreemap.org/styles/liberty',
@@ -125,7 +139,7 @@ const KILDER = {
   fkb: 'https://wms.geonorge.no/skwms1/wms.fkb?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image%2Fpng&TRANSPARENT=TRUE&STYLES=' +
        '&LAYERS=fkb_arealdekke,fkb_vann,fkb_samferdsel,fkb_bygningsmessigeanlegg,fkb_bygning,fkb_hoydekurver,fkb_presentasjonsdata' +
        '&CRS=EPSG%3A3857&WIDTH=512&HEIGHT=512&BBOX={bbox-epsg-3857}',
-  bygg: 'https://allemannsdata.com/norge/tiles/norway/tileset.json',
+  bygg: (BYGG_PROXY ? BYGG_PROXY.replace(/\/?$/, '/') : 'https://allemannsdata.com/norge/tiles/') + 'norway/tileset.json',
   adresser: 'https://ws.geonorge.no/adresser/v1/sok',
   deck: 'https://unpkg.com/deck.gl@9.4.0/dist.min.js',
 };
@@ -162,6 +176,7 @@ const dato = (iso) => { if (!iso) return '–'; const [y, m, d] = String(iso).sl
 const kr = (n) => !n ? '–' : n >= 1e6 ? (n / 1e6).toLocaleString('nb-NO', { maximumFractionDigits: 1 }) + ' MNOK' : Math.round(n / 1000).toLocaleString('nb-NO') + ' kNOK';
 const tel = (t) => { const s = String(t || '').replace(/[^\d+]/g, ''); return s ? 'tel:' + s : ''; };
 const tall = (n) => Number(n).toLocaleString('nb-NO');
+const avsender = (s) => (/claude|agent/i.test(s || '') ? 'Opisense' : s || '');
 function km(a, b) { const R = 6371, r = Math.PI / 180, dLa = (b[1] - a[1]) * r, dLo = (b[0] - a[0]) * r;
   const s = Math.sin(dLa / 2) ** 2 + Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(s)); }
 const lagre = { les(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, skriv(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
@@ -215,7 +230,7 @@ async function cachedFetch(input, init) {
 const S = {
   data: null, perId: new Map(), sokTekst: new Map(), sigBane: new Map(), sigKommune: new Map(),
   filter: null, sort: 'prioritet', valgt: new URLSearchParams(location.search).get('bane'),
-  ref: null, avstand: new Map(), utsnitt: null, vis: SIDE, flereFiltre: false,
+  ref: null, avstand: new Map(), utsnitt: null, vis: SIDE, flereFiltre: false, fane: 'baner',
   lag: Object.assign({ grunnkart: 'kart', fkb: false, bygg: true, terreng: true, overdrivelse: 1, skygge: false }, lagre.les('pst-lag', {})),
   lagApen: innerWidth > 1100, zoom: 5, liste: [], tell: {}, byggStatus: 'av', kildeFeil: {},
 };
@@ -253,7 +268,7 @@ function beregnListe() {
     avstand: (a, b) => (S.avstand.get(id(a)) ?? 1e9) - (S.avstand.get(id(b)) ?? 1e9),
   };
   l.sort(cmp[S.sort === 'avstand' && !S.ref ? 'prioritet' : S.sort]);
-  S.liste = l; S.tell = t;
+  S.liste = l; S.tell = t; S.nffAntall = l.filter(erNff).length;
 }
 
 // ============================================================ sidepanel
@@ -270,7 +285,7 @@ function tegnSidepanel() {
       <input type="search" data-f="tekst" placeholder="Filtrer: navn, kommune, eier, klubb …" value="${esc(f.tekst)}">
       <div class="rad2"><select data-f="fylke" aria-label="Fylke">${opt(fylker, f.fylke, 'Alle fylker')}</select><select data-f="kommune" aria-label="Kommune">${opt(kommuner, f.kommune, 'Alle kommuner')}</select></div>
       <div class="rad2">
-        <label class="sjekk"><input type="checkbox" data-f="nff" ${f.nff ? 'checked' : ''}> NFF-lista</label>
+        <label class="sjekk"><input type="checkbox" data-f="nff" ${f.nff ? 'checked' : ''}> <span class="li-nff" style="margin:0">NFF</span> lista${f.nff ? '' : ` (${tall(S.nffAntall)})`}</label>
         <label class="sjekk"><input type="checkbox" data-f="signaler" ${f.signaler ? 'checked' : ''}> Med signaler</label>
         <label class="sjekk"><input type="checkbox" data-f="iUtsnitt" ${f.iUtsnitt ? 'checked' : ''}> I kartutsnitt</label>
       </div>
@@ -282,20 +297,42 @@ function tegnSidepanel() {
         <label class="glider">Min. score <span id="minscore">${f.minScore}</span><input type="range" min="0" max="90" step="5" value="${f.minScore}" data-f="minScore"></label></div>` : ''}
       ${f.eier ? `<div class="tom">Eier: <b style="color:var(--tekst)">${esc(f.eier)}</b> <button class="lenke" data-a="fjerneier">fjern</button></div>` : ''}
     </div>
+    <div class="faner">${[['baner', 'Baner'], ['eiere', 'Eiere'], ['kommuner', 'Kommuner']].map(([v, t]) => `<button data-fane="${v}" class="${S.fane === v ? 'pa' : ''}">${t}</button>`).join('')}</div>
     <div class="listehode"><div><b>${tall(S.liste.length)}</b> av ${tall(totalt)} baner ${aktive ? '<button class="lenke" data-a="nullstill">· nullstill</button>' : ''}</div>
-      <select id="sort" aria-label="Sortering">${[['prioritet', 'Prioritet'], ['alder', 'Eldst dekke'], ['geografi', 'Geografi'], ['navn', 'Navn']].concat(S.ref ? [['avstand', 'Nærmest ' + S.ref.tekst]] : []).map(([v, t]) => `<option value="${v}"${S.sort === v ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+      ${S.fane !== 'baner' ? '' : `<select id="sort" aria-label="Sortering">${[['prioritet', 'Prioritet'], ['alder', 'Eldst dekke'], ['geografi', 'Geografi'], ['navn', 'Navn']].concat(S.ref ? [['avstand', 'Nærmest ' + S.ref.tekst]] : []).map(([v, t]) => `<option value="${v}"${S.sort === v ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>`}</div>
     <div class="listeknapper"><button class="lenke" data-a="passinn">Vis utvalget i kartet</button><button class="lenke" data-a="csv">Last ned CSV</button>${S.ref ? '<button class="lenke" data-a="fjernref">Fjern søkepunkt</button>' : ''}</div>
     <ol class="liste" id="liste"></ol>`;
   tegnListe();
 }
 function tegnListe() {
+  if (S.fane !== 'baner') return tegnGrupper();
   const st = S.data.meta.status;
   $('#liste').innerHTML = S.liste.slice(0, S.vis).map((b) => { const k = S.avstand.get(id(b));
-    return `<li><button class="li${S.valgt === id(b) ? ' valgt' : ''}" data-bane="${esc(id(b))}"><span class="li-prio" style="background:${st[b.kode].farge}">${b.prioritet}</span>
-      <span class="li-tekst"><span class="li-navn">${esc(b.navn)}</span><span class="li-under">${esc(b.kommune)}${b.dekke_aar ? ' · dekke ' + b.dekke_aar : ' · dekkeår ukjent'}${b.banestorrelse ? ' · ' + esc(b.banestorrelse) : ''}${erInne(b) ? ' · inne' : ''}${k != null ? ` · ${k < 10 ? k.toFixed(1) : Math.round(k)} km` : ''}</span>
+    return `<li><button class="li${S.valgt === id(b) ? ' valgt' : ''}${erNff(b) ? ' nff' : ''}" data-bane="${esc(id(b))}" title="${esc(st[b.kode].tekst)}${erNff(b) ? ' · på NFF-lista' : ''}"><span class="li-prio" style="background:${st[b.kode].farge}">${b.prioritet}</span>
+      <span class="li-tekst"><span class="li-navn">${esc(b.navn)}${erNff(b) ? '<span class="li-nff">NFF</span>' : ''}</span><span class="li-under">${esc(b.kommune)}${b.dekke_aar ? ` · dekke ${b.dekke_aar} (${b.dekke_alder} år)` : ' · dekkeår ukjent'}${b.banestorrelse ? ' · ' + esc(b.banestorrelse) : ''}${erInne(b) ? ' · inne' : ''}${k != null ? ` · ${k < 10 ? k.toFixed(1) : Math.round(k)} km` : ''}</span>
       ${b.aktive_signaler ? `<span class="li-signal">⚡ ${esc(b.aktive_signaler)}</span>` : ''}</span><span class="li-score">${b.lead_score ?? ''}</span></button></li>`; }).join('')
     + (S.liste.length > S.vis ? `<li><button class="flere" data-a="vismer">Vis flere (${tall(S.liste.length - S.vis)} igjen)</button></li>` : '')
     + (S.liste.length ? '' : '<li class="tom">Ingen baner passer filtrene.</li>');
+}
+// Eiere / kommuner: hvem har flest baner som trenger nytt dekke (i gjeldende utvalg)
+function tegnGrupper() {
+  const st = S.data.meta.status, eier = S.fane === 'eiere', g = new Map();
+  for (const b of S.liste) {
+    const k = eier ? b.eier || '(ukjent eier)' : b.kommune || '(ukjent kommune)';
+    let x = g.get(k);
+    if (!x) g.set(k, x = { k, n: 0, kode: {}, nff: 0, maks: 0, fylke: b.fylke, kat: b.eierkategori, tlf: b.eier_telefon, epost: b.eier_epost, kommuner: new Set(), sig: 0 });
+    x.n++; x.kode[b.kode] = (x.kode[b.kode] || 0) + 1; if (erNff(b)) x.nff++; x.maks = Math.max(x.maks, b.lead_score || 0);
+    x.kommuner.add(b.kommune); if (b.aktive_signaler) x.sig++;
+  }
+  const behov = (x) => (x.kode.anbud || 0) * 2 + (x.kode.overmoden || 0) + (x.kode.moden || 0) * 0.5;
+  const liste = [...g.values()].sort((a, b) => behov(b) - behov(a) || b.maks - a.maks || b.n - a.n);
+  $('#liste').innerHTML = `<li class="tom" style="padding:6px 0 4px">${tall(liste.length)} ${eier ? 'eiere' : 'kommuner'} · sortert etter antall flater som trenger nytt dekke. Klikk for å se banene.</li>`
+    + liste.slice(0, S.vis).map((x) => `<li><button class="gr" data-gruppe="${esc(x.k)}">
+      <div class="gr-navn"><span>${esc(x.k)}</span><small style="color:var(--demp)">${eier ? esc(x.kat || '') : esc(x.fylke || '')}</small></div>
+      <div class="gr-tall"><span><b>${x.n}</b> flater</span>${x.kode.overmoden ? `<span><b style="color:${st.overmoden.farge}">${x.kode.overmoden}</b> overmodne</span>` : ''}${x.kode.moden ? `<span><b style="color:${st.moden.farge}">${x.kode.moden}</b> modne</span>` : ''}${x.nff ? `<span><span class="li-nff" style="margin:0">NFF</span> ${x.nff}</span>` : ''}${x.sig ? `<span style="color:#ffd479">⚡ ${x.sig}</span>` : ''}<span>beste score <b>${x.maks}</b></span>
+        ${eier && x.kommuner.size > 1 ? `<span>${x.kommuner.size} kommuner</span>` : ''}${eier && x.tlf ? `<span>☎ ${esc(x.tlf)}</span>` : ''}</div>
+      <div class="gr-bar">${STATUS_REKKE.map((k) => x.kode[k] ? `<i style="width:${x.kode[k] / x.n * 100}%;background:${st[k].farge}"></i>` : '').join('')}</div></button></li>`).join('')
+    + (liste.length > S.vis ? `<li><button class="flere" data-a="vismer">Vis flere (${tall(liste.length - S.vis)} igjen)</button></li>` : '');
 }
 function oppdaterAlt(beholdSide) {
   if (!beholdSide) S.vis = SIDE;
@@ -313,7 +350,13 @@ $('#sidepanel').addEventListener('input', (e) => {
 });
 $('#sidepanel').addEventListener('change', (e) => { if (e.target.id === 'sort') { S.sort = e.target.value; oppdaterAlt(); } });
 $('#sidepanel').addEventListener('click', (e) => {
-  const k = e.target.closest('[data-status],[data-a],[data-bane]'); if (!k) return;
+  const k = e.target.closest('[data-status],[data-a],[data-bane],[data-fane],[data-gruppe]'); if (!k) return;
+  if (k.dataset.fane) { S.fane = k.dataset.fane; S.vis = SIDE; return tegnSidepanel(); }
+  if (k.dataset.gruppe != null) {
+    const v = k.dataset.gruppe;
+    if (S.fane === 'eiere') S.filter.eier = v; else { S.filter.kommune = v; S.filter.fylke = S.perKommune.get(v) || ''; }
+    S.fane = 'baner'; oppdaterAlt(); passInn(S.liste); return;
+  }
   if (k.dataset.status) { const s = k.dataset.status, l = S.filter.status; S.filter.status = l.includes(s) ? l.filter((x) => x !== s) : [...l, s]; return oppdaterAlt(); }
   if (k.dataset.bane) return velg(k.dataset.bane, true);
   ({
@@ -382,7 +425,7 @@ function tegnDetaljer() {
       ${akt.length ? `<ul class="sig">${akt.map((a) => `<li><b>${dato(a.dato)}</b> ${esc(a.type)} · ${esc(a.selger)} ${a.kontakt ? '→ ' + esc(a.kontakt) : ''}<div>${esc(a.resultat)}</div>${a.neste_steg ? `<small>Neste: ${esc(a.neste_steg)} ${a.neste_dato ? '(' + dato(a.neste_dato) + ')' : ''}</small>` : ''}</li>`).join('')}</ul>` : '<p class="tom" style="color:var(--kort-demp)">Ingen aktiviteter registrert. Logg samtaler i arket «Aktiviteter» i Excel.</p>'}</section>
     ${samme.length ? `<section class="boks"><h3>Samme eier – ${samme.length} andre flater</h3><ul class="mini">${samme.slice(0, 12).map((x) => `<li><button data-bane="${esc(id(x))}"><span class="prikk" style="background:${d.meta.status[x.kode].farge}"></span> #${x.prioritet} ${esc(x.navn)}<small>${x.dekke_alder != null ? x.dekke_alder + ' år' : ''}</small></button></li>`).join('')}</ul>
       <button class="lenke" data-a="eierfilter">Vis alle ${samme.length + 1} flater for denne eieren i lista →</button></section>` : ''}
-    <section class="boks meta"><dl>${rad('Anleggsnr.', esc(b.anleggsnr))}${rad('Koordinater', b.lat != null ? `${b.lat}, ${b.lon}` : '')}${rad('Status', esc(b.status))}${rad('Sist oppdatert', dato(b.sist_oppdatert) + (b.oppdatert_av ? ' av ' + esc(b.oppdatert_av) : ''))}</dl></section>
+    <section class="boks meta"><dl>${rad('Anleggsnr.', esc(b.anleggsnr))}${rad('Koordinater', b.lat != null ? `${b.lat}, ${b.lon}` : '')}${rad('Status', esc(b.status))}${rad('Sist oppdatert', dato(b.sist_oppdatert) + (b.oppdatert_av ? ' av ' + esc(avsender(b.oppdatert_av)) : ''))}</dl></section>
   </div>`;
   $('#detaljer').scrollTop = 0;
 }
@@ -461,7 +504,7 @@ let kart = null, overlay = null, markor = null, libertyLag = [];
 function geojson() {
   return { type: 'FeatureCollection', features: S.liste.filter((b) => b.lat != null).map((b) => ({
     type: 'Feature', geometry: { type: 'Point', coordinates: [b.lon, b.lat] },
-    properties: { id: id(b), navn: b.navn, p: b.prioritet, s: b.lead_score ?? 0, k: b.kode, inne: erInne(b) ? 1 : 0 } })) };
+    properties: { id: id(b), navn: b.navn, p: b.prioritet, s: b.lead_score ?? 0, k: b.kode, inne: erInne(b) ? 1 : 0, nff: erNff(b) ? 1 : 0 } })) };
 }
 function oppdaterKartdata() { kart?.getSource('pst-baner')?.setData(geojson()); }
 function flyTilBane(b) { if (b?.lat == null) return; kart.flyTo({ center: [b.lon, b.lat], zoom: 16.4, pitch: 62, bearing: -18, duration: 2200, essential: true }); }
@@ -502,12 +545,13 @@ function startKart() {
     kart.addLayer({ id: 'pst-bane', type: 'circle', source: 'pst-baner', layout: { 'circle-sort-key': ['get', 's'] }, paint: {
       'circle-color': farge, 'circle-opacity': 0.95,
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, ['interpolate', ['linear'], ['get', 's'], 0, 2, 100, 5.5], 9, ['interpolate', ['linear'], ['get', 's'], 0, 4, 100, 8], 15, ['interpolate', ['linear'], ['get', 's'], 0, 9, 100, 15]],
-      'circle-stroke-color': ['case', ['==', ['get', 'inne'], 1], '#9ad1ff', '#ffffff'], 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 4, 0.6, 12, 2] } });
+      'circle-stroke-color': ['case', ['==', ['get', 'nff'], 1], '#8e44ad', ['==', ['get', 'inne'], 1], '#9ad1ff', '#ffffff'],
+      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 4, ['case', ['==', ['get', 'nff'], 1], 1.4, 0.6], 12, ['case', ['==', ['get', 'nff'], 1], 3.5, 2]] } });
     kart.addLayer({ id: 'pst-nr', type: 'symbol', source: 'pst-baner', minzoom: 11, layout: { 'text-field': ['to-string', ['get', 'p']], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 9, 16, 12], 'text-allow-overlap': true, 'symbol-sort-key': ['get', 'p'] }, paint: { 'text-color': '#fff' } });
     kart.addLayer({ id: 'pst-navn', type: 'symbol', source: 'pst-baner', minzoom: 12, layout: { 'text-field': ['get', 'navn'], 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'text-offset': [0, 1.5], 'text-anchor': 'top', 'text-max-width': 12, 'symbol-sort-key': ['get', 'p'] }, paint: { 'text-color': '#0b1f3a', 'text-halo-color': '#fff', 'text-halo-width': 1.6 } });
     const tips = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12, className: 'tips' });
     kart.on('mousemove', 'pst-bane', (e) => { kart.getCanvas().style.cursor = 'pointer'; const f = e.features[0], p = f.properties, st = S.data.meta.status[p.k];
-      tips.setLngLat(f.geometry.coordinates).setHTML(`<b>#${p.p} ${esc(p.navn)}</b><br><span style="color:${st.farge}">●</span> ${esc(st.tekst)} · score ${p.s}`).addTo(kart); });
+      tips.setLngLat(f.geometry.coordinates).setHTML(`<b>#${p.p} ${esc(p.navn)}</b><br><span style="color:${st.farge}">●</span> ${esc(st.tekst)} · score ${p.s}${p.nff ? ' · <b style="color:#8e44ad">NFF-lista</b>' : ''}`).addTo(kart); });
     kart.on('mouseleave', 'pst-bane', () => { kart.getCanvas().style.cursor = ''; tips.remove(); });
     kart.on('click', (e) => { const f = kart.queryRenderedFeatures(e.point, { layers: ['pst-bane'] })[0]; velg(f ? f.properties.id : null); });
     kart.on('moveend', ved_flytt); ved_flytt();
@@ -522,7 +566,7 @@ function ved_flytt() {
   if (S.filter.iUtsnitt) oppdaterAlt();
   if (endretTerskel) oppdaterBygg();
   const h = $('#hint');
-  const tekst = S.lag.bygg && z < BYGG_MIN_ZOOM ? 'Zoom inn for å se 3D-bygg' : S.lag.fkb && z < FKB_MIN_ZOOM ? 'Zoom litt mer inn for detaljkart (FKB)' : '';
+  const tekst = S.lag.bygg && z < (S.byggStatus === 'klar' ? BYGG_MIN_ZOOM : 14) ? 'Zoom inn for å se 3D-bygg' : S.lag.fkb && z < FKB_MIN_ZOOM ? 'Zoom litt mer inn for detaljkart (FKB)' : '';
   h.hidden = !tekst; h.textContent = tekst;
 }
 
@@ -530,11 +574,11 @@ function ved_flytt() {
 function brukLag() {
   if (!kart?.getLayer('pst-bane')) return;
   const L = S.lag, gra = L.grunnkart === 'graatone';
-  const allemann = L.bygg && S.byggStatus !== 'feil';
   for (const lid of libertyLag) {
     if (!kart.getLayer(lid)) continue;
     let synlig = !gra;
-    if (lid === 'building-3d') synlig = !gra && !allemann; // OSM-klosser når Allemannsdata er av eller ikke svarer
+    // OSM-klosser når detaljerte bygg ikke er tilgjengelige (eller ikke lastet ennå)
+    if (lid === 'building-3d') synlig = !gra && L.bygg && S.byggStatus !== 'klar';
     kart.setLayoutProperty(lid, 'visibility', synlig ? 'visible' : 'none');
   }
   kart.setLayoutProperty('pst-graatone', 'visibility', gra ? 'visible' : 'none');
@@ -545,7 +589,11 @@ function brukLag() {
   oppdaterBygg(); lagre.skriv('pst-lag', L); ved_flytt();
 }
 
-// ---- 3D-bygg fra Allemannsdata: deck.gl lastes først når laget brukes
+// ---- detaljerte 3D-bygg fra Allemannsdata: deck.gl lastes først når laget brukes.
+// Svarer ikke kilden (typisk fordi den ikke tillater andre nettsider uten proxy), brukes OSM-bygg i stillhet,
+// og vi venter et døgn før neste forsøk.
+const BYGG_FEIL_NOKKEL = 'pst-bygg-feil';
+if (!BYGG_PROXY && Date.now() - (lagre.les(BYGG_FEIL_NOKKEL, 0) || 0) < 864e5) S.byggStatus = 'osm';
 let deckLaster = null;
 function lastDeck() {
   return deckLaster ||= new Promise((ok, feil) => { const s = document.createElement('script'); s.src = KILDER.deck; s.onload = ok; s.onerror = feil; document.head.appendChild(s); });
@@ -553,18 +601,20 @@ function lastDeck() {
 const BYGG_LOAD_OPTIONS = { tileset: { updateTransforms: false, maxRequests: 8, maximumScreenSpaceError: 1.5, maximumMemoryUsage: 128 }, core: { fetch: cachedFetch } };
 async function oppdaterBygg() {
   if (!kart) return;
-  const vil = S.lag.bygg && S.byggStatus !== 'feil';
-  if (!vil) { overlay?.setProps({ layers: [] }); return; }
+  if (!S.lag.bygg || S.byggStatus === 'osm') { overlay?.setProps({ layers: [] }); return; }
   if (S.byggStatus === 'av') {
-    S.byggStatus = 'laster'; tegnLagpanel();
+    S.byggStatus = 'laster';
     try {
+      const r = await fetch(KILDER.bygg, { cache: 'no-store' }); // sjekk at kilden kan brukes herfra
+      if (!r.ok) throw new Error('HTTP ' + r.status);
       await lastDeck();
-      const r = await cachedFetch(KILDER.bygg); if (!r.ok) throw new Error('HTTP ' + r.status); // sjekk at kilden svarer (CORS)
       overlay = new deck.MapLibreOverlay({ interleaved: false, layers: [] });
       kart.addControl(overlay);
-      S.byggStatus = 'klar';
-    } catch (e) { console.warn('[3D-bygg]', e); S.byggStatus = 'feil'; tegnLagpanel(); brukLag(); return; }
-    tegnLagpanel();
+      S.byggStatus = 'klar'; lagre.skriv(BYGG_FEIL_NOKKEL, 0);
+    } catch {
+      S.byggStatus = 'osm'; if (!BYGG_PROXY) lagre.skriv(BYGG_FEIL_NOKKEL, Date.now());
+    }
+    tegnLagpanel(); brukLag(); return;
   }
   if (S.byggStatus !== 'klar') return;
   // Ett stabilt lag: samme id/data/loadOptions hele tiden, bare `visible` endres med zoom.
@@ -576,22 +626,20 @@ async function oppdaterBygg() {
 
 function tegnLagpanel() {
   const L = S.lag, fe = S.kildeFeil;
-  const byggTekst = { av: '', laster: 'Laster 3D-motor …', klar: '', feil: 'Allemannsdata svarte ikke fra denne siden – viser enklere OSM-bygg i stedet.' }[S.byggStatus];
   $('#lagpanel').innerHTML = `<button class="lagknapp" data-a="apne" aria-expanded="${S.lagApen}">◆ Kartlag</button>${S.lagApen ? `
   <div class="laginnhold">
     <div class="lagtittel">Grunnkart</div>
     <div class="segment"><button data-g="kart" class="${L.grunnkart === 'kart' ? 'pa' : ''}">Kart (OSM)</button><button data-g="graatone" class="${L.grunnkart === 'graatone' ? 'pa' : ''}">Gråtone (Kartverket)</button></div>
     ${fe['pst-graatone'] >= 6 && L.grunnkart === 'graatone' ? '<p class="merk">Kartverket-flisene lastes ikke i denne nettleseren nå.</p>' : ''}
     <div class="lagtittel">Lag</div>
-    <label class="bryter"><input type="checkbox" data-l="bygg" ${L.bygg ? 'checked' : ''}><span>Detaljerte 3D-bygg <small>Allemannsdata · fra zoom 13</small></span></label>
-    ${byggTekst ? `<p class="merk">${byggTekst}</p>` : ''}
+    <label class="bryter"><input type="checkbox" data-l="bygg" ${L.bygg ? 'checked' : ''}><span>3D-bygg <small>${S.byggStatus === 'klar' ? 'Allemannsdata (detaljerte) · fra zoom 13' : 'OpenStreetMap · fra zoom 14'}</small></span></label>
     <label class="bryter"><input type="checkbox" data-l="fkb" ${L.fkb ? 'checked' : ''}><span>Detaljkart FKB <small>banekanter, bygg, veg · fra zoom 14</small></span></label>
     ${fe['pst-fkb'] >= 6 && L.fkb ? '<p class="merk">FKB-kartet svarer ikke fra denne siden.</p>' : ''}
     <label class="bryter"><input type="checkbox" data-l="terreng" ${L.terreng ? 'checked' : ''}><span>3D-terreng <small>Mapterhorn</small></span></label>
     ${L.terreng ? `<label class="glider">Overdrivelse ${L.overdrivelse.toFixed(1)}×<input type="range" min="1" max="3" step="0.1" value="${L.overdrivelse}" data-l="overdrivelse"></label>` : ''}
     <label class="bryter"><input type="checkbox" data-l="skygge" ${L.skygge ? 'checked' : ''}><span>Skyggelegging</span></label>
     ${L.bygg && !L.terreng ? '<p class="merk">Tips: slå på 3D-terreng – byggene har ekte høyde over havet.</p>' : ''}
-    <div class="lagstat" id="lagstat"></div>
+    ${S.byggStatus === 'klar' ? '<div class="lagstat" id="lagstat"></div>' : ''}
     <button class="lenke" data-a="kilder">Kilder og vilkår</button>
   </div>` : ''}`;
   oppdaterLagstat();
@@ -610,7 +658,6 @@ $('#lagpanel').addEventListener('click', (e) => {
 $('#lagpanel').addEventListener('input', (e) => {
   const l = e.target.dataset.l; if (!l) return;
   S.lag[l] = e.target.type === 'checkbox' ? e.target.checked : +e.target.value;
-  if (l === 'bygg' && e.target.checked && S.byggStatus === 'feil') S.byggStatus = 'av'; // prøv igjen
   if (l !== 'overdrivelse') tegnLagpanel(); else e.target.previousSibling.textContent = `Overdrivelse ${S.lag.overdrivelse.toFixed(1)}×`;
   brukLag();
 });
@@ -622,7 +669,7 @@ function visKilder() {
     <p>Banedata beregnet ${dato(S.data.meta.oppdatert)} fra Excel-arbeidsdokumentet. Kartet henter bare det som vises på skjermen; 3D-bygg lagres i nettleserens cache i inntil 14 dager.</p>
     <table class="vilkar"><thead><tr><th>Kilde</th><th>Brukes til</th><th>Lisens og merknad</th></tr></thead><tbody>
     ${VILKAR.map(([n, u, b, l]) => `<tr><td><a href="${u}" target="_blank" rel="noopener">${esc(n)}</a></td><td>${esc(b)}</td><td>${esc(l)}</td></tr>`).join('')}</tbody></table>
-    <h3>Fargene</h3><p>Rød = overmoden (dekke ≥ 12 år) · oransje = moden (9–11 år) · grå = ukjent dekkeår · blå = i rehab-prosess · mørk grå = tildelt · grønn = OK · mørk rød = åpent anbud. Hvit ring = ute, lyseblå ring = inne. Større prikk = høyere score.</p>
+    <h3>Fargene</h3><p>Rød = overmoden (dekke ≥ 12 år) · oransje = moden (9–11 år) · grå = ukjent dekkeår · blå = i rehab-prosess · mørk grå = tildelt · grønn = OK · mørk rød = åpent anbud. Lilla kant = står på NFF-lista, hvit kant = ute, lyseblå kant = inne. Større prikk = høyere score. Fanene «Eiere» og «Kommuner» viser hvem som har flest baner som trenger nytt dekke i utvalget.</p>
   </div></div>`;
 }
 $('#modal').addEventListener('click', (e) => { if (e.target.dataset.a === 'lukk') $('#modal').innerHTML = ''; });
@@ -641,13 +688,15 @@ function lastNedCsv() {
 fetch('data/pst.json', { cache: 'no-cache' }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((d) => {
   d.baner.forEach((b, i) => { b._i = i; b.kode ||= 'ukjent'; });
   S.data = d;
+  S.perKommune = new Map(d.baner.map((b) => [b.kommune, b.fylke]));
   for (const b of d.baner) { S.perId.set(id(b), b); S.sokTekst.set(id(b), norm(`${b.navn} ${b.kommune ?? ''} ${b.eier ?? ''} ${b.klubb_navn ?? ''} ${b.anleggsnr ?? ''}`)); }
   for (const s of d.signaler) {
     if (s.anleggsnr) { const k = String(s.anleggsnr); S.sigBane.set(k, [...(S.sigBane.get(k) || []), s]); }
     else if (s.kommune) S.sigKommune.set(s.kommune, [...(S.sigKommune.get(s.kommune) || []), s]);
   }
   $('#undertittel').textContent = `${tall(d.meta.antall)} flater · data ${dato(d.meta.oppdatert)}`;
-  $('#tegn').innerHTML = STATUS_REKKE.map((k) => `<span><i style="background:${d.meta.status[k].farge}"></i>${esc(d.meta.status[k].tekst.replace(/ \(.*\)/, ''))}</span>`).join('');
+  $('#tegn').innerHTML = STATUS_REKKE.map((k) => `<span><i style="background:${d.meta.status[k].farge}"></i>${esc(d.meta.status[k].tekst.replace(/ \(.*\)/, ''))}</span>`).join('')
+    + '<span><i style="background:#fff;box-shadow:inset 0 0 0 2px #8e44ad"></i>NFF-lista</span><span><i style="background:#fff;box-shadow:inset 0 0 0 2px #9ad1ff"></i>Innendørs</span>';
   beregnListe(); tegnSidepanel(); tegnDetaljer(); tegnLagpanel(); startKart();
   $('#laster').remove();
   if (typeof caches !== 'undefined' && isSecureContext) setTimeout(() => byggIndeks().then(oppdaterLagstat), 3000);
