@@ -37,5 +37,13 @@ Kildehenvisninger vises nederst i kartet. Vilkårene står under «Kilder og vil
 - **NFF:** lilla «NFF»-merke på baner som står på NFF-lista, og lilla kant på prikken i kartet.
 - **Eiere og Kommuner:** fanene viser hvem som har flest overmodne og modne baner i utvalget, med telefon til eier. Klikk for å se banene.
 
+## Reise til og fra
+Hver bane har en reiseboks.
+- **Startpunkt:** skriv inn en adresse, bruk «Min posisjon» eller et lagret startpunkt («Lagre som base», f.eks. lageret).
+- **Ruter:** kartet regner ut opptil tre ruter til anlegget og ruten tilbake, med kjøretid, kilometer og om ruta har ferje. Valgt rute tegnes i kartet, og du kan bytte rute i lista eller ved å klikke en stiplet linje.
+- **Kjøretøy:** henger (+15 %) og lastebil (+25 %) er grove tillegg.
+- **Google Maps:** lenken gir sanntidstrafikk.
+- **Kilde:** OSRM-ruting på OpenStreetMap-data (FOSSGIS-serveren, med reserveserver). Kjøretiden er uten trafikk og ventetid på ferje.
+
 ## Synlighet
 Repoet og siden er offentlige. `robots.txt` og `noindex` ber søkemotorer la være å indeksere siden, men alle som har lenken kan se innholdet. Kontaktinfo er offentlig informasjon fra Enhetsregisteret til B2B-bruk, så respekter reservasjoner.

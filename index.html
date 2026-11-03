@@ -89,6 +89,14 @@ dl{margin:0}.r{display:grid;grid-template-columns:130px 1fr;gap:8px;padding:4px 
 .sig{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.sig li{font-size:13px;border-left:3px solid #f0a500;padding:2px 0 2px 8px}.sig li.ut{border-left-color:#c9d1dc;color:var(--kort-demp)}
 .sig small{color:var(--kort-demp)}.poeng{font-weight:700;color:#a76b00}.poeng.neg{color:#9b2c2c}
 .mini{list-style:none;margin:0 0 6px;padding:0}.mini button{display:flex;gap:6px;align-items:center;width:100%;text-align:left;border:0;background:none;padding:5px 2px;font-size:13px;color:var(--kort-tekst)}.mini button:hover{background:#f0f4f9}.mini small{margin-left:auto;color:var(--kort-demp)}
+.reise-rad{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.reise-rad>button,.reise-rad select{border:1px solid var(--kort-linje);background:#fff;border-radius:7px;padding:5px 9px;font-size:12.5px;color:var(--kort-tekst)}
+.reise-rad>button.primar{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.reise-sok{position:relative;max-width:none;margin:0;flex:1 1 100%}.reise-sok input{background:#fff;color:var(--kort-tekst);border:1px solid var(--kort-linje)}
+.rute{display:flex;gap:8px;align-items:flex-start;padding:7px 8px;border:1px solid var(--kort-linje);border-radius:8px;margin-top:6px;cursor:pointer;font-size:13px}
+.rute.pa{border-color:#1f6fd1;background:#eef4fb}.rute small{display:block;color:var(--kort-demp)}.rute input{margin-top:3px}
+.rute-sum{margin-top:8px;font-size:13px;line-height:1.5}.reise-feil{color:#9b2c2c;font-size:13px}
+.startmarkor{width:16px;height:16px;border-radius:4px;background:#0b1f3a;border:3px solid #fff;box-shadow:0 0 0 4px rgba(11,31,58,.25)}
 .kildelinje{font-size:11.5px;color:var(--kort-demp);margin:-2px 2px 0}
 .modalbg{position:fixed;inset:0;background:rgba(5,14,28,.6);display:grid;place-items:center;z-index:50;padding:16px}
 .modal{background:#fff;color:var(--kort-tekst);border-radius:12px;max-width:980px;width:100%;max-height:90vh;overflow:auto;padding:20px 24px;position:relative}.modal h2{margin-top:0}
@@ -156,6 +164,7 @@ const VILKAR = [
   ['Kartverket – topografisk gråtone', 'https://www.kartverket.no/api-og-data/vilkar-for-bruk', 'Grunnkart «Gråtone»', 'CC BY 4.0, «© Kartverket». Data fra zoom 12 og innover er Geovekst-data: fritt å vise, ikke kopiere.'],
   ['Kartverket – FKB (WMS)', 'https://kartkatalog.geonorge.no/metadata/felles-kartdatabase-fkb/df7e8515-d9ce-4781-823c-f73b3bb5fe48', 'Detaljkart: banekanter, bygg, veg', '«Copyright Statens kartverk». Siden viser bare kartbilder; selve FKB-dataene krever avtale for private.'],
   ['Allemannsdata – Norges bygninger 3D', 'https://allemannsdata.com/norge/data.html', 'Detaljerte 3D-bygg (3D Tiles/GLB)', 'Bygget av Kartverkets laserdata (CC BY 4.0) og OSM-fotavtrykk (ODbL). Kildene må krediteres. Bare fliser i utsnittet lastes.'],
+  ['Ruting (OSRM, FOSSGIS)', 'https://routing.openstreetmap.de/about.html', 'Reisetid og ruter til anleggene', 'Gratis rutetjeneste på OpenStreetMap-data (ODbL) for lett bruk. Én beregning per klikk. Kjøretid er uten trafikk og ventetid på ferje.'],
   ['Geonorge – adresse-API', 'https://ws.geonorge.no/adresser/v1/', 'Adressesøk', 'Åpne adressedata fra Matrikkelen, © Kartverket. Ett oppslag per søk.'],
   ['Banedata', 'https://www.anleggsregisteret.no/', 'Baner, score, kontakter og signaler', 'Anleggsregisteret, NFF-lista, Enhetsregisteret (NLOD), Doffin og kommunale kilder. Kontaktinfo er offentlig Enhetsregister-info for B2B – respekter reservasjoner.'],
 ];
@@ -406,6 +415,7 @@ function tegnDetaljer() {
   </header>
   <div class="dkropp">
     <section class="boks frem"><h3>Neste steg</h3><p>${esc(b.neste_steg || '–')}</p><h3>Beste kontakt</h3><p>${lenket(b.beste_kontakt)}</p></section>
+    <section class="boks" id="reise"></section>
     <section class="boks"><h3>Hvorfor denne scoren</h3><p class="forkl">${esc(b.score_forklaring || '–')}</p></section>
     ${signaler.length ? `<section class="boks"><h3>Signaler (${signaler.filter((s) => s.aktiv === 'JA').length} aktive)</h3><ul class="sig">${signaler.map((s) => `<li class="${s.aktiv === 'JA' ? '' : 'ut'}">
       <span class="poeng${+s.poeng < 0 ? ' neg' : ''}">${+s.poeng > 0 ? '+' : ''}${esc(s.poeng ?? '')}</span> <b>${esc(typer[s.signaltype]?.navn || s.signaltype)}</b>
@@ -428,6 +438,7 @@ function tegnDetaljer() {
     <section class="boks meta"><dl>${rad('Anleggsnr.', esc(b.anleggsnr))}${rad('Koordinater', b.lat != null ? `${b.lat}, ${b.lon}` : '')}${rad('Status', esc(b.status))}${rad('Sist oppdatert', dato(b.sist_oppdatert) + (b.oppdatert_av ? ' av ' + esc(avsender(b.oppdatert_av)) : ''))}</dl></section>
   </div>`;
   $('#detaljer').scrollTop = 0;
+  tegnReise();
 }
 $('#detaljer').addEventListener('click', (e) => {
   const k = e.target.closest('[data-a],[data-bane]'); if (!k) return;
@@ -444,6 +455,7 @@ $('#detaljer').addEventListener('click', (e) => {
   })[k.dataset.a]?.();
 });
 function velg(bid, fly) {
+  if (bid !== S.valgt) fjernRute();
   S.valgt = bid;
   const u = new URL(location.href); bid ? u.searchParams.set('bane', bid) : u.searchParams.delete('bane'); history.replaceState(null, '', u);
   tegnDetaljer(); if (S.data) tegnListe();
@@ -452,6 +464,138 @@ function velg(bid, fly) {
   if (b && fly) flyTilBane(b);
   if (b && innerWidth <= 800) $('#app').classList.add('uten-liste');
 }
+
+// ============================================================ reise til og fra anlegget
+// Ruter fra OSRM på OpenStreetMap-data (FOSSGIS-serveren, med prosjektets demoserver som reserve).
+const RUTE_URL = ['https://routing.openstreetmap.de/routed-car/route/v1/driving/', 'https://router.project-osrm.org/route/v1/driving/'];
+const KJORETOY = { bil: ['Personbil', 1], henger: ['Varebil med henger (+15 %)', 1.15], lastebil: ['Lastebil (+25 %)', 1.25] };
+const R = { fra: lagre.les('pst-reise-fra', null), base: lagre.les('pst-base', null), kjoretoy: lagre.les('pst-kjoretoy', 'bil'), ruter: null, retur: null, valgt: 0, laster: false, feil: '', bane: null };
+let startMarkor = null;
+const tid = (sek) => { const m = Math.round(sek / 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} t ${String(m % 60).padStart(2, '0')} min`; };
+const kmTekst = (m) => (m < 10000 ? (m / 1000).toFixed(1).replace('.', ',') : Math.round(m / 1000)) + ' km';
+async function hentRuter(a, b, alternativer) {
+  for (const base of RUTE_URL) {
+    try {
+      const r = await fetch(`${base}${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson&steps=true&alternatives=${alternativer ? 3 : 'false'}`);
+      if (!r.ok) continue;
+      const j = await r.json();
+      if (j.code === 'Ok' && j.routes?.length) return j.routes;
+      if (j.code === 'NoRoute') throw new Error('Fant ingen kjørbar rute mellom stedene.');
+    } catch (e) { if (/kjørbar/.test(e.message)) throw e; }
+  }
+  throw new Error('Rutetjenesten svarte ikke. Prøv igjen om litt, eller bruk Google Maps-lenken.');
+}
+const harFerje = (rute) => rute.legs.some((l) => l.steps.some((st) => st.mode === 'ferry'));
+const via = (rute) => rute.legs.map((l) => l.summary).filter(Boolean).join(', ');
+function fjernRute() {
+  R.ruter = null; R.retur = null; R.valgt = 0; R.feil = ''; R.bane = null;
+  kart?.getSource('pst-rute')?.setData({ type: 'FeatureCollection', features: [] });
+  startMarkor?.remove(); startMarkor = null;
+}
+function tegnRute(tilpass) {
+  if (!kart?.getSource('pst-rute') || !R.ruter) return;
+  kart.getSource('pst-rute').setData({ type: 'FeatureCollection', features: R.ruter.map((r, i) => ({ type: 'Feature', geometry: r.geometry, properties: { i, valgt: i === R.valgt ? 1 : 0 } })) });
+  startMarkor?.remove();
+  const el = document.createElement('div'); el.className = 'startmarkor'; el.title = R.fra.tekst;
+  startMarkor = new maplibregl.Marker({ element: el }).setLngLat([R.fra.lon, R.fra.lat]).addTo(kart);
+  if (tilpass) {
+    const bb = new maplibregl.LngLatBounds(); R.ruter[R.valgt].geometry.coordinates.forEach((c) => bb.extend(c));
+    kart.fitBounds(bb, { padding: { top: 80, bottom: 130, left: S.lagApen && innerWidth > 900 ? 320 : 50, right: 70 }, pitch: 0, bearing: 0, maxZoom: 14, duration: 1200 });
+  }
+}
+async function beregnRute() {
+  const b = S.perId.get(S.valgt); if (!b || !R.fra || b.lat == null) return;
+  R.laster = true; R.feil = ''; R.bane = S.valgt; tegnReise();
+  const mal = { lat: b.lat, lon: b.lon };
+  try {
+    const [ut, retur] = await Promise.all([hentRuter(R.fra, mal, true), hentRuter(mal, R.fra, false)]);
+    if (R.bane !== S.valgt) return; // brukeren har byttet bane imens
+    R.ruter = ut.sort((x, y) => x.duration - y.duration); R.retur = retur[0]; R.valgt = 0;
+    tegnRute(true);
+  } catch (e) { R.feil = e.message; R.ruter = null; }
+  R.laster = false; tegnReise();
+}
+function reiseTekst(b) {
+  const r = R.ruter[R.valgt], f = KJORETOY[R.kjoretoy][1];
+  return `Reise ${R.fra.tekst} → ${b.navn} (${b.kommune}): ${tid(r.duration * f)}, ${kmTekst(r.distance)}${harFerje(r) ? ', med ferje' : ''}${via(r) ? ', via ' + via(r) : ''}. `
+    + `Retur: ${tid(R.retur.duration * f)}, ${kmTekst(R.retur.distance)}. Tur/retur: ${tid((r.duration + R.retur.duration) * f)} (${kmTekst(r.distance + R.retur.distance)}). Kjøretøy: ${KJORETOY[R.kjoretoy][0]}.`;
+}
+function tegnReise() {
+  const el = $('#reise'); const b = S.perId.get(S.valgt); if (!el || !b) return;
+  const luft = R.fra && b.lat != null ? km([R.fra.lon, R.fra.lat], [b.lon, b.lat]) : null;
+  const f = KJORETOY[R.kjoretoy][1];
+  const gmaps = R.fra && b.lat != null ? `https://www.google.com/maps/dir/?api=1&origin=${R.fra.lat},${R.fra.lon}&destination=${b.lat},${b.lon}&travelmode=driving` : '';
+  let res = '';
+  if (R.laster) res = '<p class="tom" style="color:var(--kort-demp)">Beregner ruter …</p>';
+  else if (R.feil) res = `<p class="reise-feil">${esc(R.feil)}</p>`;
+  else if (R.ruter && R.bane === S.valgt) {
+    const r = R.ruter[R.valgt];
+    res = R.ruter.map((x, i) => `<label class="rute${i === R.valgt ? ' pa' : ''}"><input type="radio" name="rute" data-rute="${i}" ${i === R.valgt ? 'checked' : ''}>
+        <span><b>${tid(x.duration * f)}</b> · ${kmTekst(x.distance)}${harFerje(x) ? ' · ⛴ ferje' : ''}${i === 0 ? ' · raskest' : ''}<small>${via(x) ? 'via ' + esc(via(x)) : ''}</small></span></label>`).join('')
+      + `<div class="rute-sum">Til anlegget: <b>${tid(r.duration * f)}</b> (${kmTekst(r.distance)})<br>Retur: <b>${tid(R.retur.duration * f)}</b> (${kmTekst(R.retur.distance)})${harFerje(R.retur) ? ' · ⛴ ferje' : ''}<br>
+        Tur/retur: <b>${tid((r.duration + R.retur.duration) * f)}</b> · ${kmTekst(r.distance + R.retur.distance)}${R.ruter.length > 1 ? '<br><small style="color:var(--kort-demp)">Velg en annen rute i lista eller klikk den stiplede linja i kartet.</small>' : ''}</div>
+      <div class="reise-rad"><button data-r="vis">Vis ruten</button><button data-r="kopier">Kopier reiseinfo</button><button data-r="fjern">Fjern rute</button></div>`;
+  }
+  el.innerHTML = `<h3>Reise til og fra</h3>
+    <div class="reise-rad"><div class="sok reise-sok"><input type="search" id="reise-inn" placeholder="Fra adresse, f.eks. lageret eller hotellet …" value="${esc(R.fra?.tekst || '')}" autocomplete="off"><div class="sok-liste" hidden></div></div></div>
+    <div class="reise-rad">
+      <button data-r="pos">📍 Min posisjon</button>
+      ${R.base && R.base.tekst !== R.fra?.tekst ? `<button data-r="base" title="Lagret startpunkt">🏠 ${esc(R.base.tekst)}</button>` : ''}
+      ${S.ref && S.ref.tekst !== R.fra?.tekst ? `<button data-r="ref">📌 ${esc(S.ref.tekst)}</button>` : ''}
+      ${R.fra && R.base?.tekst !== R.fra.tekst ? '<button data-r="lagrebase" title="Brukes som standard startpunkt neste gang">Lagre som base</button>' : ''}
+    </div>
+    <div class="reise-rad"><select data-r="kjoretoy" aria-label="Kjøretøy">${Object.entries(KJORETOY).map(([k, [t]]) => `<option value="${k}"${k === R.kjoretoy ? ' selected' : ''}>${t}</option>`).join('')}</select>
+      <button class="primar" data-r="beregn" ${R.fra ? '' : 'disabled'}>Beregn rute</button>${gmaps ? `<a class="lenke" href="${gmaps}" target="_blank" rel="noopener" style="font-size:12.5px">Google Maps (med trafikk) ↗</a>` : ''}</div>
+    ${luft != null && !R.ruter ? `<p class="tom" style="color:var(--kort-demp);margin:2px 0">${kmTekst(luft * 1000)} i luftlinje fra ${esc(R.fra.tekst)}.</p>` : ''}
+    ${res}
+    <p class="kildelinje" style="margin-top:6px">Kjøretid fra OpenStreetMap-ruting uten trafikk og ventetid på ferje. Henger/lastebil er et grovt tillegg.</p>`;
+  kobleReiseSok();
+}
+function settFra(a) { R.fra = a; lagre.skriv('pst-reise-fra', a); R.ruter = null; R.feil = ''; tegnReise(); beregnRute(); }
+function kobleReiseSok() {
+  const inp = $('#reise-inn'); if (!inp) return; const liste = inp.nextElementSibling;
+  let t, ctrl, treff = [];
+  inp.addEventListener('input', () => {
+    clearTimeout(t); ctrl?.abort(); const q = inp.value.trim();
+    if (q.length < 3) { liste.hidden = true; return; }
+    t = setTimeout(async () => {
+      ctrl = new AbortController();
+      try {
+        const j = await (await fetch(`${KILDER.adresser}?sok=${encodeURIComponent(q)}&fuzzy=true&treffPerSide=6&utkoordsys=4258`, { signal: ctrl.signal })).json();
+        treff = (j.adresser || []).filter((a) => a.representasjonspunkt).map((a) => ({ tekst: `${a.adressetekst}, ${a.poststed || a.kommunenavn || ''}`.replace(/, $/, ''), lat: a.representasjonspunkt.lat, lon: a.representasjonspunkt.lon }));
+        liste.innerHTML = treff.length ? treff.map((a, i) => `<button data-i="${i}">📍 ${esc(a.tekst)}</button>`).join('') : '<div class="sok-info">Ingen treff</div>';
+        liste.hidden = false;
+      } catch (e) { if (e.name !== 'AbortError') { liste.innerHTML = '<div class="sok-info">Adressesøket svarte ikke</div>'; liste.hidden = false; } }
+    }, 280);
+  });
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && treff[0]) settFra(treff[0]); if (e.key === 'Escape') liste.hidden = true; });
+  liste.addEventListener('click', (e) => { const k = e.target.closest('[data-i]'); if (k) settFra(treff[+k.dataset.i]); });
+}
+$('#detaljer').addEventListener('click', (e) => {
+  const k = e.target.closest('[data-r]'); if (!k || k.tagName === 'SELECT') return;
+  const b = S.perId.get(S.valgt);
+  ({
+    pos: () => {
+      if (!navigator.geolocation) { R.feil = 'Nettleseren gir ikke tilgang til posisjon.'; return tegnReise(); }
+      k.textContent = 'Finner posisjon …';
+      navigator.geolocation.getCurrentPosition((p) => settFra({ tekst: 'Min posisjon', lat: +p.coords.latitude.toFixed(5), lon: +p.coords.longitude.toFixed(5) }),
+        () => { R.feil = 'Fikk ikke tilgang til posisjonen din.'; tegnReise(); }, { enableHighAccuracy: false, timeout: 10000 });
+    },
+    base: () => settFra(R.base),
+    ref: () => settFra({ tekst: S.ref.tekst, lat: S.ref.lat, lon: S.ref.lon }),
+    lagrebase: () => { R.base = R.fra; lagre.skriv('pst-base', R.base); tegnReise(); },
+    beregn: beregnRute,
+    vis: () => tegnRute(true),
+    kopier: () => navigator.clipboard?.writeText(reiseTekst(b)).then(() => { k.textContent = 'Kopiert ✓'; }),
+    fjern: () => { fjernRute(); tegnReise(); },
+  })[k.dataset.r]?.();
+});
+$('#detaljer').addEventListener('change', (e) => {
+  if (e.target.dataset.r === 'kjoretoy') { R.kjoretoy = e.target.value; lagre.skriv('pst-kjoretoy', R.kjoretoy); tegnReise(); }
+  if (e.target.dataset.rute != null) { R.valgt = +e.target.dataset.rute; tegnRute(true); tegnReise(); }
+});
+// Lukk forslag i reisefeltet ved klikk utenfor
+document.addEventListener('mousedown', (e) => { const l = $('#reise .sok-liste'); if (l && !e.target.closest('#reise .reise-sok')) l.hidden = true; });
 
 // ============================================================ adressesøk
 (function adressesok() {
@@ -540,6 +684,11 @@ function startKart() {
     kart.addLayer({ id: 'pst-skygge', type: 'hillshade', source: 'pst-skygge', layout: { visibility: 'none' }, paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#2b3a4a' } }, forsteSymbol);
     kart.addLayer({ id: 'pst-fkb', type: 'raster', source: 'pst-fkb', minzoom: FKB_MIN_ZOOM, layout: { visibility: 'none' }, paint: { 'raster-opacity': 0.85 } }, forsteSymbol);
     const farge = ['match', ['get', 'k']]; for (const [k, v] of Object.entries(S.data.meta.status)) farge.push(k, v.farge); farge.push('#7f8c8d');
+    kart.addSource('pst-rute', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    kart.addLayer({ id: 'pst-rute-alt', type: 'line', source: 'pst-rute', filter: ['==', ['get', 'valgt'], 0], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#7a8aa0', 'line-width': 4, 'line-opacity': 0.75, 'line-dasharray': [1.5, 1.2] } });
+    kart.addLayer({ id: 'pst-rute-kant', type: 'line', source: 'pst-rute', filter: ['==', ['get', 'valgt'], 1], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 9 } });
+    kart.addLayer({ id: 'pst-rute', type: 'line', source: 'pst-rute', filter: ['==', ['get', 'valgt'], 1], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1f6fd1', 'line-width': 5.5 } });
+    kart.on('click', 'pst-rute-alt', (e) => { const i = e.features[0]?.properties?.i; if (i != null) { R.valgt = +i; tegnRute(); tegnReise(); } });
     kart.addLayer({ id: 'pst-ring', type: 'circle', source: 'pst-baner', filter: ['==', ['get', 'id'], S.valgt || ''],
       paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 10, 10, 15, 16, 26], 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': '#ffd400', 'circle-stroke-width': 3 } });
     kart.addLayer({ id: 'pst-bane', type: 'circle', source: 'pst-baner', layout: { 'circle-sort-key': ['get', 's'] }, paint: {
