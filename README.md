@@ -17,6 +17,16 @@ Siden er én HTML-fil (`index.html`) og en datafil (`data/pst.json`). Den har in
 
 Du kan også laste opp en ny `data/pst.json` direkte på github.com med «Add file → Upload files».
 
+## Arena Builder (`bygg.html`)
+Et 3D-byggespill der man finner en bane i kartet og rehabiliterer eller bygger nytt med PSTs produkter.
+
+**Åpne:** https://jjameson90.github.io/PST-baneoversikt/bygg.html · direkte til en bane med `bygg.html?bane=<anleggsnr>` (knappen «Åpne i Arena Builder» i baneoversikten).
+
+- **Baner:** leser `data/pst.json` fra dette repoet. Fila har også en innebygd kopi av banelista, så den virker alene.
+- **Området rundt banen:** terreng fra Mapterhorn (reserve: Kartverkets høydedata), bygninger, veier, skog, vann, gjerder og baneomriss fra OpenStreetMap. Kartverkets FKB kan legges på terrenget under Omgivelser.
+- **Lagring:** prosjekter lagres i nettleseren eller eksporteres som JSON. Kartutsnittet (terreng og OSM-geometri) lagres i prosjektet, så området ser likt ut når prosjektet åpnes igjen, også uten nett og selv om OpenStreetMap har endret seg.
+- **Priser:** alle priser i selgermodus er syntetiske testdata, ikke PSTs priser. Selgermodus er en demonstrasjonsbryter uten tilgangskontroll.
+
 ## Kartlag
 - **Kart (OSM):** OpenFreeMap «Liberty».
 - **Gråtone:** Kartverket WMTS `topograatone`.

@@ -411,7 +411,7 @@ function tegnDetaljer() {
     <div class="score"><div class="score-tall">${b.lead_score ?? 0}<small>/100</small></div>
       <div class="sbar" title="Grunnscore ${grunn} + signaler ${sig}"><i style="width:${Math.min(64, grunn)}%;background:var(--navy-3)"></i>${sig > 0 ? `<i style="width:${Math.min(100 - grunn, sig)}%;background:#f0a500"></i>` : ''}</div>
       <div class="sdel">grunnscore ${b.grunnscore ?? 0}/64 · signaler ${sig >= 0 ? '+' : ''}${sig}</div></div>
-    <div class="knapper"><button class="primar" data-a="fly">Fly til i 3D</button>${besteEpost(b) ? `<a href="${epostUtkast(b)}">E-postutkast</a>` : ''}<button data-a="kopier">Kopier</button><button data-a="del">Del lenke</button>${gmaps ? `<a href="${gmaps}" target="_blank" rel="noopener">Google Maps</a>` : ''}<a href="https://doffin.no/search?searchString=${encodeURIComponent('kunstgress ' + (b.kommune || ''))}" target="_blank" rel="noopener">Doffin</a></div>
+    <div class="knapper"><button class="primar" data-a="fly">Fly til i 3D</button>${b.lat != null ? `<a href="bygg.html?bane=${encodeURIComponent(id(b))}" target="_blank" rel="noopener">Åpne i Arena Builder</a>` : ''}${besteEpost(b) ? `<a href="${epostUtkast(b)}">E-postutkast</a>` : ''}<button data-a="kopier">Kopier</button><button data-a="del">Del lenke</button>${gmaps ? `<a href="${gmaps}" target="_blank" rel="noopener">Google Maps</a>` : ''}<a href="https://doffin.no/search?searchString=${encodeURIComponent('kunstgress ' + (b.kommune || ''))}" target="_blank" rel="noopener">Doffin</a></div>
   </header>
   <div class="dkropp">
     <section class="boks frem"><h3>Neste steg</h3><p>${esc(b.neste_steg || '–')}</p><h3>Beste kontakt</h3><p>${lenket(b.beste_kontakt)}</p></section>
